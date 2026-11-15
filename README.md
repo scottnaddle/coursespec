@@ -33,6 +33,8 @@ coursespec validate examples/ai-agent-education.coursespec.yaml
 coursespec lint     examples/ai-agent-education.coursespec.yaml
 coursespec plan     examples/ai-agent-education.coursespec.yaml --target moodle --start 2027-03-02
 coursespec plan     examples/ai-agent-education.coursespec.yaml --target canvas --start 2027-03-02 --account-id 1
+coursespec plan     examples/ai-agent-education.coursespec.yaml --target canvas --start 2027-03-02 \
+                    --course-id 5 --post-import [--canvas-quiz classic|new]
 coursespec plan     examples/ai-agent-education.coursespec.yaml --target openmaic --server ubion-maic
 coursespec plan     ... --json      # 실행기(에이전트·허브)가 읽는 형식
 
@@ -51,7 +53,9 @@ coursespec tutor-pack course.yaml --start 2027-03-02 --out tutor/   # tutor-pack
 `plan`·`diff`·`export`는 네트워크를 호출하지 않습니다. `diff`는 실행기가 읽어 온 LMS 스냅샷 JSON과 마지막 배포 기록을 입력으로 받아 생성·수정·숨김 단계만 만듭니다(삭제 없음). 실행은 계획을 읽은 에이전트나 허브가 합니다 ([docs/publishing.md](docs/publishing.md)).
 
 `export --format imscc`는 IMS Common Cartridge 1.3 ZIP(`imsmanifest.xml`이 ZIP 루트)을 만들고,
-같은 검증을 바로 실행합니다. 표준 CC에 없는 기능은 변환 보고서에 `info`/`warn`/`loss`로 남깁니다.
+같은 검증을 바로 실행합니다. `page`는 Canvas 카트리지 importer가 쓰는 `wiki_content/<id>.html`로 내보내고,
+표준 CC importer가 기능 플래그 없이 `File`로 둘 때는 `plan --post-import`가 REST로 Page를 만들어 교체합니다.
+표준 CC에 없는 기능은 변환 보고서에 `info`/`warn`/`loss`로 남깁니다.
 `verify`는 공식 1EdTech XSD(저장소의 `schema/imscc/`)로 매니페스트·과제·토론·QTI를 오프라인 검증합니다.
 `verify-lms`는 `.imscc`를 Canvas에 가져온 뒤 실행기가 REST로 읽어 둔 스냅샷과 설계서를 오프라인 비교합니다.
 네트워크를 호출하지 않으며, 같은 방식으로 REST plan의 `verify=True` 단계 실행 결과도 함께 보고합니다.
@@ -112,8 +116,9 @@ units:
 ## 현재 상태 (v0.3.0)
 
 - 스키마·린트·Moodle 계획: moodle-agent-mcp 도구 시그니처 기준으로 작성, 단위 테스트 완료. 실서버 실행 검증은 아직입니다.
-- Canvas 계획: REST API v1 / New Quizzes API 기준입니다. IMSCC 가져오기와 REST plan의 `verify=True` 단계를 로컬 Canvas 테스트 인스턴스에서 실행했습니다. 모듈 제목·토론·과제는 일치했습니다. `page`는 `File`(`w1-reading.html`, `w2-case.html`)로 들어왔고, CC QTI 퀴즈는 모듈·classic quizzes·과제 목록에 없었습니다(가져오기 이슈 목록도 비어 있었음). 토론은 제목만 있고 점수는 없었습니다(CC 토론 리소스에 점수 필드 없음). 성적 카테고리(참여/과제)는 들어오지 않고 Canvas 기본 그룹(`Assignments`, `Imported Assignments`)만 있었습니다.
-- Canvas REST plan `verify=True` 단계(New Quiz 생성, 문항 2개)를 로컬 Canvas 테스트 인스턴스에 실제 POST했습니다. GET/POST `/api/quiz/v1/courses/.../quizzes`가 404(비JSON)라서 실패했습니다. 이 오픈소스 canvas-lms 인스턴스에는 New Quizzes API가 없습니다. 문항 단계는 퀴즈 id가 없어 호출하지 못했고, 루브릭은 이 데모 계획에 없습니다.
+- Canvas 계획: REST API v1 / New Quizzes API 기준입니다. IMSCC 가져오기와 REST plan의 `verify=True` 단계를 로컬 Canvas 테스트 인스턴스에서 실행했습니다. 모듈 제목·토론·과제는 일치했습니다. 이전 exporter의 `page`는 `File`(`w1-reading.html`, `w2-case.html`)로 들어왔고, CC QTI 퀴즈는 모듈·classic quizzes·과제 목록에 없었습니다(가져오기 이슈 목록도 비어 있었음). 토론은 제목만 있고 점수는 없었습니다(CC 토론 리소스에 점수 필드 없음). 성적 카테고리(참여/과제)는 들어오지 않고 Canvas 기본 그룹(`Assignments`, `Imported Assignments`)만 있었습니다.
+- 이제 exporter는 `page`를 `wiki_content/`로 내보냅니다. 표준 CC importer는 기능 플래그 `common_cartridge_page_conversion`이 없으면 이를 `File`로 둘 수 있어, `--post-import`가 제목으로 찾아 Page로 교체합니다. 같은 보완 단계에서 토론 점수·날짜·성적 그룹/가중치·완료 조건을 REST로 설정합니다.
+- 오픈소스 Canvas에서 QTI converter 플러그인이 꺼져 있으면(`Qti.qti_enabled?`가 거짓) importer가 경고 없이 퀴즈를 건너뜁니다. 리소스 type은 표준 importer 매칭에 맞으므로, 테스트용 인스턴스에서는 `--canvas-quiz classic`으로 Classic Quiz를 만들고 `--post-import`로 모듈 아이템을 보완하세요. New Quizzes는 호스팅 Canvas에서만 형식 검증이 가능하며, 오픈소스 canvas-lms 인스턴스에는 `/api/quiz/v1` API가 없을 수 있습니다.
 - OpenMAIC 생성 계획: THU-MAIC/OpenMAIC 저장소 코드(2026-11)의 API 기준. 실서버 검증 전입니다.
 - IMS Common Cartridge 1.3 내보내기와 로컬 XSD 검증: 완료. Canvas 로컬 테스트 인스턴스 가져오기까지 확인했고, 위 가져오기 차이는 `coursespec verify-lms`로 오프라인 비교합니다.
 - `coursespec verify-lms`: 실행기가 읽어 둔 Canvas 스냅샷과 REST plan verify 단계 결과를 설계서와 비교합니다. 네트워크 호출 없이 일치·누락·차이와 표준 CC 한계를 보고하며 종료 코드는 0/1/2입니다.

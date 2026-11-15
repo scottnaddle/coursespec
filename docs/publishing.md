@@ -22,7 +22,7 @@
 }
 ```
 
-- `tool`: Moodle은 moodle-agent-mcp 도구 이름, Canvas는 `canvas_request`(method·path·json) 또는 `canvas_upload_file`, OpenMAIC은 `openmaic_upload_material`·`openmaic_request`(method·path·json·`save_to`)·`openmaic_wait_job`, 그리고 공통으로 `coursespec_patch`(ops).
+- `tool`: Moodle은 moodle-agent-mcp 도구 이름, Canvas는 `canvas_request`(method·path·json)·`canvas_upload_file`·`canvas_ensure_assignment_groups`·`canvas_patch_imported`·`canvas_promote_file_to_page`·`canvas_create_classic_quiz`·`canvas_add_module_item`, OpenMAIC은 `openmaic_upload_material`·`openmaic_request`(method·path·json·`save_to`)·`openmaic_wait_job`, 그리고 공통으로 `coursespec_patch`(ops).
 - `binds`: 이 단계 결과에서 꺼낼 값. `"이름": "결과 경로"`이며 경로는 점으로 구분합니다 (`sections.0.section`).
 - `${이름}`: 앞 단계에서 bind된 값. 문자열 전체가 참조면 원래 타입(int)으로, 경로 속에 섞이면 문자열로 바뀝니다.
 - `{"$file": "경로"}`: 실행기가 워크스페이스 파일을 읽어 base64로 넣을 자리.
@@ -46,6 +46,34 @@ Moodle 은 새 강좌에 기본 공지 포럼(예: `강좌공지`)을 자동으�
 
 `coursespec_patch` 단계는 실행기가 참조를 푼 연산을 `coursespec.patch.patch_file(설계서, ops)` 로 적용합니다. 검증을 통과하지 못하면 예외가 나고 설계서는 바뀌지 않습니다. OpenMAIC 생성 결과가 설계서에 기록되는 경로가 이것입니다.
 
+### Canvas 퀴즈 API와 post-import
+
+```bash
+coursespec plan course.yaml --target canvas --start 2027-03-02 --course-id 5 \
+  [--canvas-quiz classic|new] [--post-import]
+```
+
+- `--canvas-quiz new`(기본)는 기존 New Quizzes 경로(`/api/quiz/v1/...`)를 쓰고 `verify=True` 단계를 만듭니다.
+  New Quizzes 는 호스팅 Canvas 에서만 형식 검증이 가능하며, 오픈소스 canvas-lms 인스턴스에는 API 가 없을 수 있습니다.
+- `--canvas-quiz classic` 은 `/api/v1/courses/:id/quizzes` 와
+  `/api/v1/courses/:id/quizzes/:quiz_id/questions` 로 고전 퀴즈·문항을 만듭니다(verify 플래그 없음).
+- `--post-import` 는 `--course-id` 가 필요합니다. 강좌·모듈·활동을 다시 만들지 않고, 가져온 강좌를
+  제목으로 찾아 다음 전용 단계만 만듭니다.
+  - `canvas_ensure_assignment_groups` `{course_id, groups:[{id,name,weight}], apply_weights}`
+  - `canvas_patch_imported` `{course_id, kind, title, unit_title?, fields, completion?}`
+  - `canvas_promote_file_to_page` `{course_id, title, unit_title, body_from:"imported_file"}`
+  - `canvas_create_classic_quiz` `{course_id, unit_title, title, ...퀴즈 설정, questions, completion?}`
+    — 실행기는 같은 제목의 퀴즈가 없을 때만 만들고 해당 모듈에 아이템을 추가합니다.
+  - `canvas_add_module_item` `{course_id, unit_title, title, type, content_id, completion?}` (New Quiz 생성 뒤)
+
+`canvas_ensure_assignment_groups` 의 결과는 요청한 순서의 `groups:[{id,name,weight}]` 이며,
+계획의 `${cat.<id>.group_id}` 가 그 `id` 를 참조합니다. 실행기는 제목(`title`, `unit_title`)으로 가져온 항목을 찾아 적용합니다. `.imscc` 의 `page` 는
+`wiki_content/` 로 내보내지만 표준 CC importer 가 기능 플래그 없이 `File` 로 둘 수 있으므로,
+post-import 의 `canvas_promote_file_to_page` 가 Page 로 교체합니다. 날짜·토론 점수·성적 그룹/가중치·완료 조건도
+같은 보완 단계에서 설정하고, 보완해도 옮길 수 없는 것만 `loss`/`warn` 으로 남깁니다. 단원 `opens_day` 는
+아직 모듈 `unlock_at` 으로 설정하지 않으므로 해당 단원에 `loss` 를 남기고, 가져온 뒤 Canvas 에서 직접
+공개일을 지정해야 합니다.
+
 ## 파일 내보내기: export → verify
 
 MCP 없이 LMS 가져오기 파일이 필요하면 `export` 를 씁니다. 계획(plan)과 마찬가지로 네트워크를 호출하지 않습니다.
@@ -57,6 +85,9 @@ coursespec verify course.imscc
 
 - `export` 는 먼저 설계서 스키마와 린트를 검사합니다. 린트 오류가 있으면 `--force` 없이는 중단합니다.
 - ZIP 루트에 `imsmanifest.xml` 을 두고, 단원을 모듈 item 으로, 활동을 리소스 item 으로 씁니다.
+- `page` 는 완전한 HTML 문서(`<meta charset>`, `<title>`, meta identifier)로 `wiki_content/<id>.html` 에 씁니다.
+  Canvas 카트리지 importer 의 `WIKI_FOLDER` 와 같은 경로지만, 표준 CC importer 는 기능 플래그
+  `common_cartridge_page_conversion` 이 없으면 이를 `File` 로 둘 수 있습니다. 그때는 `plan --post-import` 로 Page 로 교체합니다.
 - 표준 CC 1.3 에 없는 기능은 `info`/`warn`/`loss` 변환 보고서로 알리고, 비표준 XML 을 임의로 만들지 않습니다.
 - 쓰기가 끝나면 `verify` 와 같은 검증을 자동 실행합니다. 검증 오류가 없어야 종료 코드가 0 입니다(경고는 허용).
 - `verify` 는 공식 1EdTech XSD(`schema/imscc/`)와 ZIP 참조를 로컬에서 검사합니다. 실제 LMS 가져오기 검증은 별도 단계입니다.

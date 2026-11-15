@@ -48,6 +48,8 @@ def main(argv: list[str] | None = None) -> int:
         help="moodle: 새 강좌의 완료 추적 (기본 켜짐)",
     )
     p.add_argument("--account-id", type=int, help="canvas: 새 강좌를 만들 계정")
+    p.add_argument("--canvas-quiz", choices=["new", "classic"], default="new", help="canvas: 퀴즈 API (기본 new)")
+    p.add_argument("--post-import", action="store_true", help="canvas: 가져온 IMSCC 강좌를 제목으로 찾아 보완")
     p.add_argument("--server", help="openmaic: 수업 기록에 남길 서버 이름")
     p.add_argument("--regenerate", action="store_true", help="openmaic: 이미 생성된 수업도 다시 생성")
     p.add_argument("--json", action="store_true", help="실행기용 JSON 출력")
@@ -147,7 +149,12 @@ def main(argv: list[str] | None = None) -> int:
             "enablecompletion": 1 if args.enable_completion else 0,
         }
     elif args.target == "canvas":
-        kwargs = {"course_id": args.course_id, "account_id": args.account_id}
+        kwargs = {
+            "course_id": args.course_id,
+            "account_id": args.account_id,
+            "quiz_api": args.canvas_quiz,
+            "post_import": args.post_import,
+        }
     else:
         kwargs = {"server": args.server, "regenerate": args.regenerate}
     try:

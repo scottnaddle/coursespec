@@ -158,9 +158,26 @@ class _PackageBuilder:
             parts.append(f'<p><a href="{url}">동영상 보기</a></p>')
             self.note(item["id"], "info", "동영상은 링크로 넣었습니다. 임베드 여부는 가져온 LMS에서 정합니다.")
         content = "\n".join(p for p in parts if p) or f"<p>{_html.escape(item['title'])}</p>"
-        href = f"web_resources/{item['id']}.html"
-        self.files[href] = content.encode("utf-8")
         rid = self.uid("res_", item["id"])
+        title = _html.escape(item["title"])
+        language = _html.escape(self.spec.data.get("language") or "ko", quote=True)
+        # Canvas 카트리지 importer 의 WIKI_FOLDER(wiki_content)와 같은 경로를 쓴다.
+        # 표준 CC importer 는 기능 플래그가 없으면 File 로 둘 수 있으므로 post-import 에서 Page 로 보완한다.
+        document = (
+            "<!DOCTYPE html>\n"
+            f'<html lang="{language}">\n'
+            "<head>\n"
+            '<meta charset="utf-8">\n'
+            f'<meta name="identifier" content="{_html.escape(rid, quote=True)}">\n'
+            f"<title>{title}</title>\n"
+            "</head>\n"
+            "<body>\n"
+            f"{content}\n"
+            "</body>\n"
+            "</html>\n"
+        )
+        href = f"wiki_content/{item['id']}.html"
+        self.files[href] = document.encode("utf-8")
         self.add_resource(rid, "webcontent", href)
         self._date_note(item)
         return item["title"], rid

@@ -8,7 +8,9 @@ from coursespec.imscc_verify import ASSIGN_NS, QTI_NS, verify_imscc
 from coursespec.publishers.imscc import export_imscc
 from coursespec.spec import from_data, load_spec
 
-from .conftest import EXAMPLE
+from .conftest import EXAMPLE, ROOT
+
+DEMO = ROOT / "examples" / "design-agent-demo" / "course.coursespec.yaml"
 
 
 def _names(path):
@@ -48,8 +50,17 @@ def test_export_example_creates_portable_package(tmp_path):
     names = _names(dest)
     assert "imsmanifest.xml" in names
     assert not any(name.startswith("course/") for name in names)
-    assert "web_resources/w1-reading.html" in names
+    assert "wiki_content/w1-reading.html" in names
+    assert "wiki_content/w2-cases.html" in names
     assert "files/w1-notes/autonomy-levels.md" in names
+    assert "web_resources/w2-glossary.html" in names
+    assert not any(name.startswith("web_resources/w1-reading") for name in names)
+
+    page = _read(dest, "wiki_content/w1-reading.html").decode("utf-8")
+    assert page.startswith("<!DOCTYPE html>")
+    assert '<meta charset="utf-8">' in page
+    assert "<title>읽기 자료 — 스킬·파이프라인·플러그인·에이전트</title>" in page
+    assert 'name="identifier"' in page
 
     manifest = _read(dest, "imsmanifest.xml")
     text = manifest.decode("utf-8")
@@ -66,6 +77,17 @@ def test_export_example_creates_portable_package(tmp_path):
 
     verify = verify_imscc(dest)
     assert verify.errors == []
+
+
+def test_demo_pages_are_exported_to_wiki_content(tmp_path):
+    dest = tmp_path / "demo.imscc"
+    result = export_imscc(load_spec(DEMO), dest)
+
+    names = _names(dest)
+    assert {"wiki_content/w1-reading.html", "wiki_content/w2-case.html"} <= names
+    assert not any(name.startswith("web_resources/w1-reading") for name in names)
+    assert not any(name.startswith("web_resources/w2-case") for name in names)
+    assert result.verify.errors == []
 
 
 def test_losses_are_reported_for_unrepresentable_items(tmp_path):
@@ -170,5 +192,5 @@ def test_verify_rejects_broken_packages(tmp_path):
     assert verify_imscc(wrong_version).errors
 
     missing_file = tmp_path / "missing-file.imscc"
-    _rewrite(good, missing_file, remove="web_resources/w1-reading.html")
+    _rewrite(good, missing_file, remove="wiki_content/w1-reading.html")
     assert verify_imscc(missing_file).errors

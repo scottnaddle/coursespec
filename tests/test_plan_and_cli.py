@@ -31,3 +31,29 @@ def test_cli_lint_and_plan(capsys):
 
 def test_cli_plan_canvas_needs_account(capsys):
     assert main(["plan", str(EXAMPLE), "--target", "canvas", "--start", "2027-03-02"]) == 2
+
+
+def test_cli_plan_canvas_post_import_needs_course_id(capsys):
+    assert main([
+        "plan", str(EXAMPLE), "--target", "canvas", "--start", "2027-03-02", "--post-import",
+    ]) == 2
+    capsys.readouterr()
+
+
+def test_cli_plan_canvas_classic_quiz_and_post_import(capsys):
+    assert main([
+        "plan", str(EXAMPLE), "--target", "canvas", "--start", "2027-03-02",
+        "--course-id", "5", "--canvas-quiz", "classic", "--json",
+    ]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert any(step["tool"] == "canvas_request" and step.get("about", "").startswith("Classic 퀴즈") for step in payload["steps"])
+
+    assert main([
+        "plan", str(EXAMPLE), "--target", "canvas", "--start", "2027-03-02",
+        "--course-id", "5", "--post-import", "--canvas-quiz", "classic", "--json",
+    ]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    tools = [step["tool"] for step in payload["steps"]]
+    assert "canvas_create_classic_quiz" in tools
+    assert "canvas_promote_file_to_page" in tools
+    assert not any(step.get("about") == "강좌 생성" for step in payload["steps"])

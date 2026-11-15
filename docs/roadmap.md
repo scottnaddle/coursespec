@@ -30,6 +30,11 @@
 - [x] 마지막 배포 기록 대비 드리프트 보고와 `--accept-drift` 승인, 삭제 없는 숨김 제안
 - [x] 새 강좌 `visible`·`enablecompletion` 명시와 OpenMAIC 미분류 성적 항목 수정
 - [x] Canvas IMSCC 가져오기 스냅샷과 REST plan verify 단계를 설계서와 비교하는 오프라인 `coursespec verify-lms`
+- [x] IMSCC exporter 의 `page` 를 `wiki_content/` 완전한 HTML 문서로 내보내 Canvas 카트리지 importer 경로에 맞춤
+- [x] Canvas `--post-import`: 가져온 강좌를 제목으로 찾아 `File→Page`, 토론 점수·날짜·성적 그룹/가중치·완료 조건을 REST 계획으로 보완
+- [x] Canvas `--canvas-quiz classic`: Classic Quiz REST 로 퀴즈·문항 생성 (기본값 `new` 는 New Quizzes 경로 유지)
+- [x] 오픈소스/테스트 Canvas 에서 `--canvas-quiz classic` + `--post-import` 실행 검증 (2026-11-15, 새 테스트 강좌 course_id=2, 8단계 통과)
+  - 남은 격차: classic 퀴즈 문항 수/점수가 목록 스냅샷에서 `question_count 0`·`points_possible null` 로 확인되지 않았고(문항 POST 는 오류 없이 통과, Canvas 종료 직후라 GET 미확인), 단원 `opens_day` 의 모듈 `unlock_at` 은 아직 보완하지 않음
 - [ ] 허브에 실행기(apply) 탑재: 계획 미리보기 → 일괄 승인 → 실행 → 배포 기록
 - [ ] moodle-agent-mcp 보강 제안 반영 ([publishing.md](publishing.md))
 

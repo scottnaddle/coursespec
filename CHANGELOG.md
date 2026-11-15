@@ -1,6 +1,12 @@
 # 변경 내역
 
 ## 0.3.0
+- IMSCC exporter: `page` 를 완전한 HTML 문서(`charset`·`<title>`·meta identifier)로 `wiki_content/<id>.html` 에 내보냄. `file`·`wiki`·`glossary`·강의 HTML 경로는 그대로
+- Canvas `--post-import`: 기존 `--course-id` 강좌를 제목으로 찾아 강좌·모듈·활동을 다시 만들지 않고 `canvas_ensure_assignment_groups`·`canvas_patch_imported`·`canvas_promote_file_to_page`·`canvas_create_classic_quiz` 단계로 점수·날짜·가중치·완료 조건·File→Page 를 보완. `--course-id` 없이는 종료 코드 2
+- Canvas `--canvas-quiz classic|new`(기본 `new`): classic 은 `/api/v1/courses/:id/quizzes`·`/questions` 로 고전 퀴즈·문항 생성, new 는 기존 New Quizzes 경로(`verify=True`) 유지
+- Classic 문항 매핑: multichoice→`multiple_choice_question`(복수 정답은 `multiple_answers_question`), truefalse→`true_false_question`, shortanswer→`short_answer_question`, essay→`essay_question`. 시도·채점·시간제한은 `allowed_attempts`·`scoring_policy`·`time_limit` 으로 변환
+- 문서에 QTI converter 플러그인(`Qti.qti_enabled?`)이 꺼진 오픈소스 Canvas 에서 퀴즈가 경고 없이 빠지는 원인과 Classic+post-import 우회 경로를 기록. 실서버 인스턴스에는 `vendor/QTIMigrationTool` / `migrate.py` 가 없었고(`QTI_TOOL=no`), 플러그인 설정은 확인하지 못함
+- 오픈소스 Canvas 실서버 검증(2026-11-15, Asia/Seoul, 새 테스트 강좌 course_id=2): `wiki_content/` 페이지 IMSCC 가져오기 5초·workflow 완료·issues 없음, 이어서 `--canvas-quiz classic` post-import 8단계 통과. File→Page·토론 점수·과제/퀴즈 due·성적 그룹/가중치·완료 조건·퀴즈 모듈 배치는 일치. 남은 격차: classic 퀴즈 문항 수/점수는 목록 스냅샷에서 확인되지 않음(`question_count 0`, `points_possible null`), 단원 `opens_day` 는 모듈 `unlock_at` 으로 보완하지 않아 `loss` 로 보고, CC QTI 퀴즈는 QTI 도구 부재로 가져오기에서 계속 빠짐
 - `coursespec diff SPEC --target moodle --course-id N --start YYYY-MM-DD --outline FILE`: 설계서와 실행기가 읽어 온 LMS 스냅샷(`get_course_outline`, 선택 `gradebook_overview`, 배포 기록)의 차이 계획. 네트워크 호출·삭제 없음
 - diff 매칭: `cs:<설계서 id>:<활동 id>` ID number → 배포 기록 cmid → 같은 섹션·modname·이름. 모호하면 추측하지 않음
 - diff 동작: create·update·hide(숨김)만 만들고, 마지막 배포 이후 LMS에서 직접 바뀐 값은 드리프트로 보고. `--accept-drift` 없이는 덮어쓰지 않고 종료 코드 2
