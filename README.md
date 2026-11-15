@@ -41,6 +41,9 @@ coursespec diff       course.yaml --target moodle --course-id 11 --start 2027-03
 coursespec export   examples/ai-agent-education.coursespec.yaml --format imscc --out course.imscc
 coursespec verify   course.imscc    # 공식 CC 1.3 XSD 로 로컬 검증 (네트워크 없음)
 
+coursespec verify-lms course.yaml --target canvas --snapshot snapshot.json \
+                    [--verify-steps steps.json] [--json]   # 가져오기 결과 오프라인 비교
+
 coursespec patch      course.yaml ops.json [--dry-run]      # 검증된 JSON Patch 수정
 coursespec tutor-pack course.yaml --start 2027-03-02 --out tutor/   # tutor-pack.json + SKILL.md
 ```
@@ -50,6 +53,8 @@ coursespec tutor-pack course.yaml --start 2027-03-02 --out tutor/   # tutor-pack
 `export --format imscc`는 IMS Common Cartridge 1.3 ZIP(`imsmanifest.xml`이 ZIP 루트)을 만들고,
 같은 검증을 바로 실행합니다. 표준 CC에 없는 기능은 변환 보고서에 `info`/`warn`/`loss`로 남깁니다.
 `verify`는 공식 1EdTech XSD(저장소의 `schema/imscc/`)로 매니페스트·과제·토론·QTI를 오프라인 검증합니다.
+`verify-lms`는 `.imscc`를 Canvas에 가져온 뒤 실행기가 REST로 읽어 둔 스냅샷과 설계서를 오프라인 비교합니다.
+네트워크를 호출하지 않으며, 같은 방식으로 REST plan의 `verify=True` 단계 실행 결과도 함께 보고합니다.
 
 과정 설계 에이전트는 [skills/design-agent/SKILL.md](skills/design-agent/SKILL.md)를 따릅니다.
 강의계획서 텍스트로 초안을 만들고 `coursespec lint` 루프를 돈 뒤, 저장된 설계서는
@@ -107,9 +112,11 @@ units:
 ## 현재 상태 (v0.3.0)
 
 - 스키마·린트·Moodle 계획: moodle-agent-mcp 도구 시그니처 기준으로 작성, 단위 테스트 완료. 실서버 실행 검증은 아직입니다.
-- Canvas 계획: REST API v1 / New Quizzes API 기준 **초안**입니다. `verify` 표시 단계는 실제 인스턴스에서 형식 확인이 필요합니다.
+- Canvas 계획: REST API v1 / New Quizzes API 기준입니다. IMSCC 가져오기와 REST plan의 `verify=True` 단계를 로컬 Canvas 테스트 인스턴스에서 실행했습니다. 모듈 제목·토론·과제는 일치했습니다. `page`는 `File`(`w1-reading.html`, `w2-case.html`)로 들어왔고, CC QTI 퀴즈는 모듈·classic quizzes·과제 목록에 없었습니다(가져오기 이슈 목록도 비어 있었음). 토론은 제목만 있고 점수는 없었습니다(CC 토론 리소스에 점수 필드 없음). 성적 카테고리(참여/과제)는 들어오지 않고 Canvas 기본 그룹(`Assignments`, `Imported Assignments`)만 있었습니다.
+- Canvas REST plan `verify=True` 단계(New Quiz 생성, 문항 2개)를 로컬 Canvas 테스트 인스턴스에 실제 POST했습니다. GET/POST `/api/quiz/v1/courses/.../quizzes`가 404(비JSON)라서 실패했습니다. 이 오픈소스 canvas-lms 인스턴스에는 New Quizzes API가 없습니다. 문항 단계는 퀴즈 id가 없어 호출하지 못했고, 루브릭은 이 데모 계획에 없습니다.
 - OpenMAIC 생성 계획: THU-MAIC/OpenMAIC 저장소 코드(2026-11)의 API 기준. 실서버 검증 전입니다.
-- IMS Common Cartridge 1.3 내보내기와 로컬 XSD 검증: 완료. 실 LMS 가져오기 검증은 아직입니다.
+- IMS Common Cartridge 1.3 내보내기와 로컬 XSD 검증: 완료. Canvas 로컬 테스트 인스턴스 가져오기까지 확인했고, 위 가져오기 차이는 `coursespec verify-lms`로 오프라인 비교합니다.
+- `coursespec verify-lms`: 실행기가 읽어 둔 Canvas 스냅샷과 REST plan verify 단계 결과를 설계서와 비교합니다. 네트워크 호출 없이 일치·누락·차이와 표준 CC 한계를 보고하며 종료 코드는 0/1/2입니다.
 - 설계 에이전트 스킬(최소): 초안 작성·린트 루프·패치 전용 수정 규칙.
 - 튜터 팩: 제품 중립 JSON + SKILL.md. DeepTutor 연결은 학습자 권한 체계 이후입니다.
 - 재배포 diff와 드리프트 감지: 실행기가 넘긴 LMS 스냅샷·배포 기록을 쓰는 네트워크 없는 `coursespec diff`로 제공합니다. 실제 apply 실행기는 [로드맵](docs/roadmap.md)에 있습니다. 변경 내역은 [CHANGELOG.md](CHANGELOG.md).

@@ -7,6 +7,7 @@
     coursespec diff       SPEC --target moodle --course-id N --start YYYY-MM-DD --outline FILE [--json]
     coursespec export     SPEC --format imscc [--out FILE] [--force]
     coursespec verify     PACKAGE.imscc
+    coursespec verify-lms SPEC --target canvas --snapshot FILE [--verify-steps FILE] [--json]
     coursespec patch      SPEC PATCH.json|- [--dry-run]
     coursespec tutor-pack SPEC [--start YYYY-MM-DD] [--out DIR]
 """
@@ -73,6 +74,13 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("verify", help="내보낸 패키지 로컬 검증")
     p.add_argument("package")
 
+    p = sub.add_parser("verify-lms", help="LMS 가져오기 스냅샷과 설계서 비교 (네트워크 호출 없음)")
+    p.add_argument("spec")
+    p.add_argument("--target", choices=["canvas"], required=True)
+    p.add_argument("--snapshot", required=True, help="실행기가 읽어 둔 Canvas REST 스냅샷 JSON")
+    p.add_argument("--verify-steps", help="REST plan verify=True 단계 실행 결과 JSON (선택)")
+    p.add_argument("--json", action="store_true", help="실행기용 JSON 출력")
+
     p = sub.add_parser("patch", help="검증된 JSON Patch 로 설계서 수정")
     p.add_argument("spec")
     p.add_argument("patch", help="RFC 6902 연산 배열 JSON 파일, '-' 이면 표준 입력")
@@ -96,6 +104,9 @@ def main(argv: list[str] | None = None) -> int:
     except SpecError as exc:
         _print_errors(str(exc), exc.errors)
         return 2
+
+    if args.cmd == "verify-lms":
+        return _verify_lms(args, spec)
 
     findings = lint(spec)
     errors = [f for f in findings if f.is_error]
@@ -237,6 +248,24 @@ def _verify(args: argparse.Namespace) -> int:
         return 2
     print(result.to_text())
     return 0 if not result.errors else 1
+
+
+def _verify_lms(args: argparse.Namespace, spec) -> int:
+    from .canvas_verify import verify_canvas
+
+    snapshot = _read_json(args.snapshot, "--snapshot")
+    if snapshot is None:
+        return 2
+    steps = _read_json(args.verify_steps, "--verify-steps") if args.verify_steps else None
+    if args.verify_steps and steps is None:
+        return 2
+    try:
+        result = verify_canvas(spec, snapshot, verify_steps=steps)
+    except ValueError as exc:
+        _print_errors(str(exc), [])
+        return 2
+    print(json.dumps(result.to_dict(), ensure_ascii=False, indent=2) if args.json else result.to_text())
+    return 0 if result.ok else 1
 
 
 def _patch(args: argparse.Namespace) -> int:

@@ -8,6 +8,8 @@
 - Moodle 새 강좌 `create_course`에 `visible`(기본 0)와 `enablecompletion`(기본 1) 포함. CLI `--visible`, `--enable-completion/--no-enable-completion`
 - 새 강좌의 기본 공지 포럼은 수정·숨김·삭제하지 않는다는 변환 보고 추가
 - OpenMAIC 강의 성적 처리 수정: 성적 설정이 없으면 grade 0으로 만들고 경고, 범주 없는 성적은 미분류 항목이 됨을 경고. 예시 w4 강의의 불필요한 100점 항목 제거
+- `coursespec verify-lms SPEC --target canvas --snapshot FILE [--verify-steps FILE] [--json]`: 실행기가 읽어 둔 Canvas REST 스냅샷과 REST plan verify 단계 결과를 설계서와 오프라인 비교. 모듈·페이지·토론·과제·퀴즈별 `일치`/`누락`/`차이`, 표준 CC 한계 보고, 절대 URL verify 단계 거절, 종료 코드 0/1/2
+- 로컬 Canvas 테스트 인스턴스 IMSCC 가져오기 실측: 모듈 제목·토론·과제 일치, `page`는 `File`(`w1-reading.html`, `w2-case.html`), CC QTI 퀴즈 누락, 토론 점수 없음, 성적 카테고리 미반영. New Quizzes API 부재로 REST plan verify 단계는 404(비JSON)
 
 ## 0.2.1
 - `coursespec export SPEC --format imscc`: IMS Common Cartridge 1.3 ZIP 내보내기 (네트워크 호출 없음)

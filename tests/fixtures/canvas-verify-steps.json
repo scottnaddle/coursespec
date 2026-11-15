@@ -1,0 +1,16 @@
+[
+  {
+    "about": "New Quiz: 1주차 확인 퀴즈",
+    "method": "POST",
+    "path_template": "/api/quiz/v1/courses/${course.id}/quizzes",
+    "status": 201,
+    "error": null
+  },
+  {
+    "about": "문항 1: w1-quiz",
+    "method": "POST",
+    "path_template": "/api/quiz/v1/courses/${course.id}/quizzes/${w1-quiz.id}/items",
+    "status": 404,
+    "error": "non_json"
+  }
+]

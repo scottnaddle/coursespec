@@ -1,0 +1,63 @@
+{
+  "http": {
+    "modules": 200,
+    "pages": 200,
+    "discussions": 200,
+    "assignments": 200,
+    "quizzes": 200
+  },
+  "modules": [
+    {
+      "title": "1주차 — AI 윤리의 핵심 쟁점",
+      "items": [
+        {
+          "title": "읽기 — 편향, 개인정보, 책임",
+          "type": "File",
+          "published": true
+        },
+        {
+          "title": "토론 — 생활 속 AI 윤리 사례",
+          "type": "Discussion",
+          "published": true
+        }
+      ],
+      "published": true
+    },
+    {
+      "title": "2주차 — 사례 분석과 실천 원칙",
+      "items": [
+        {
+          "title": "사례 — 채용 AI와 개인정보",
+          "type": "File",
+          "published": true
+        },
+        {
+          "title": "과제 — 나의 AI 활용 원칙과 실천 계획",
+          "type": "Assignment",
+          "published": true
+        }
+      ],
+      "published": true
+    }
+  ],
+  "pages": [],
+  "discussions": [
+    {
+      "title": "토론 — 생활 속 AI 윤리 사례",
+      "type": null,
+      "points_possible": null,
+      "published": true
+    }
+  ],
+  "assignments": [
+    {
+      "title": "과제 — 나의 AI 활용 원칙과 실천 계획",
+      "type": [
+        "online_text_entry"
+      ],
+      "points_possible": 100.0,
+      "published": true
+    }
+  ],
+  "quizzes": []
+}

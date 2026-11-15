@@ -4,7 +4,7 @@
 
 v0.2부터 세 번째 대상 `openmaic` 이 있습니다. LMS가 아니라 설계 시점의 수업 생성 대상이며, 단계는 [integration.md](integration.md)에 있습니다.
 
-검증 상태 — Moodle: moodle-agent-mcp 도구 시그니처와 `local_ubionai` 코드 기준. Canvas: Canvas REST API v1 / New Quizzes API 문서 지식 기준 **초안**이며, 계획에서 `verify` 로 표시된 단계(New Quizzes, 루브릭)는 실제 인스턴스에서 형식을 확인해야 합니다.
+검증 상태 — Moodle: moodle-agent-mcp 도구 시그니처와 `local_ubionai` 코드 기준. Canvas: Canvas REST API v1 / New Quizzes API 문서 지식 기준이며, 로컬 Canvas 테스트 인스턴스에서 IMSCC 가져오기와 계획의 `verify=True` 단계를 실행했습니다. 가져오기 결과는 `coursespec verify-lms` 로 오프라인 비교합니다. 실측: 모듈 제목·토론·과제는 일치, `page` 는 `File`(`w1-reading.html`, `w2-case.html`)로 가져와짐, CC QTI 퀴즈는 모듈·classic quizzes·과제 목록에 없음, 토론은 제목만 있고 점수 없음(CC 토론 리소스에 점수 필드 없음), 성적 카테고리(참여/과제)는 들어오지 않고 Canvas 기본 그룹(`Assignments`, `Imported Assignments`)만 있음. New Quizzes API 가 없는 오픈소스 canvas-lms 인스턴스라 New Quiz 생성·문항 단계는 404(비JSON)로 실패했고, 퀴즈 id 가 없어 문항 단계는 호출하지 못했습니다. 루브릭은 이 데모 계획에 없습니다.
 
 ## IMS Common Cartridge 1.3 (파일 내보내기)
 

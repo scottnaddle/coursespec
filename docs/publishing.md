@@ -61,6 +61,28 @@ coursespec verify course.imscc
 - 쓰기가 끝나면 `verify` 와 같은 검증을 자동 실행합니다. 검증 오류가 없어야 종료 코드가 0 입니다(경고는 허용).
 - `verify` 는 공식 1EdTech XSD(`schema/imscc/`)와 ZIP 참조를 로컬에서 검사합니다. 실제 LMS 가져오기 검증은 별도 단계입니다.
 
+## 가져오기 결과 검증: `coursespec verify-lms`
+
+`.imscc` 를 Canvas 에 가져온 뒤의 상태를 설계서와 비교합니다. `verify-lms` 도 네트워크를 호출하지 않고,
+실행기가 Canvas REST 로 읽어 둔 스냅샷과 REST plan 의 `verify=True` 단계 결과만 입력으로 받습니다.
+
+```bash
+coursespec verify-lms course.yaml --target canvas --snapshot snapshot.json \
+  [--verify-steps steps.json] [--json]
+```
+
+- `--snapshot`: `modules`(title·items[].title·type), `pages`, `discussions`, `assignments`, `quizzes` 를 담은 JSON.
+  호스트·토큰·계정 정보는 넣지 않습니다.
+- 비교 결과는 모듈·페이지·토론·과제·퀴즈별로 `일치`·`누락`·`차이` 이며, 항목마다 expected/actual/missing/extra 와
+  짧은 note 를 가집니다.
+- 알려진 CC→Canvas 가져오기 차이를 구분합니다. 페이지가 모듈 아이템에 `File` 로 들어오면 `차이` 로 두고
+  "CC webcontent가 Canvas에서 File로 가져와졌다 (Page가 아님)" 를 남깁니다. 퀴즈가 모듈·퀴즈·과제 어디에도
+  없으면 `누락` 입니다. 토론 제목은 있지만 `points_possible` 이 없으면 `차이` 로 보고합니다.
+- 표준 CC 에 없는 날짜·완료 조건·성적 카테고리/가중치는 내보내기와 같은 문구로 변환 보고서에 포함합니다.
+- `--verify-steps`: `[{about, method, path_template, status, error}]` 배열. `status` 가 2xx 이면 통과, 아니면 실패입니다.
+  `path_template` 만 받고 절대 URL 은 오류로 거절합니다.
+- 종료 코드: 전부 일치하고 verify 단계가 모두 통과(또는 생략)면 0, 비교 실패는 1, 입력 파일 오류는 2 입니다.
+
 ## 실행기(executor)의 책임
 
 실행기는 허브나 에이전트가 맡습니다. 이 저장소는 참조 해석 도우미 `coursespec.plan.resolve` · `collect`만 제공합니다.

@@ -6,7 +6,7 @@
 - [x] Moodle 계획 (moodle-agent-mcp 도구 기준), ID number 기록
 - [x] Canvas 계획 초안 (REST v1 / New Quizzes), 변환 보고서
 - [ ] 테스트 강좌에서 Moodle 계획 실서버 실행 검증 (데모 영상의 4주차 강좌 재현)
-- [ ] Canvas 무료/테스트 인스턴스에서 `verify` 단계 형식 확인
+- [x] Canvas 로컬 테스트 인스턴스에서 `verify` 단계 형식 확인: New Quizzes API가 없어 404(비JSON). 퀴즈 id가 없어 문항 단계는 호출하지 못함
 
 ## v0.2 — 자료와 수업 생성 연동
 - [x] 자료 매니페스트 (`materials`): 단원·학습목표 연결, 용도(generation·tutor·learner), 권리
@@ -21,13 +21,15 @@
 - [x] 공식 1EdTech XSD 기반 로컬 검증 (`coursespec verify`), ZIP 참조·가져오기 호환성 점검
 - [x] 표준 CC 에 없는 기능의 변환 보고서(info/warn/loss)
 - [x] 과정 설계 에이전트 최소 스킬 (`skills/design-agent/SKILL.md`)과 데모
-- [ ] 내보낸 `.imscc` 를 Moodle·Canvas 실제 인스턴스에서 가져오기 검증
+- [x] 내보낸 `.imscc` 를 Canvas 로컬 테스트 인스턴스에서 가져오기 검증: 모듈 제목·토론·과제 일치, `page`는 `File`, CC QTI 퀴즈 누락, 토론 점수 없음, 성적 카테고리 미반영
+- [ ] 내보낸 `.imscc` 를 Moodle 실제 인스턴스에서 가져오기 검증
 - 범위 밖으로 남김: DeepTutor 연결, xAPI, COURSEMOS 퍼블리셔, 실행기(apply)
 
 ## v0.3 — 실행과 재배포 (현재)
 - [x] ID number·배포 기록 기반 매칭과 네트워크 없는 diff 계획 (`coursespec diff`, 생성·수정·숨김)
 - [x] 마지막 배포 기록 대비 드리프트 보고와 `--accept-drift` 승인, 삭제 없는 숨김 제안
 - [x] 새 강좌 `visible`·`enablecompletion` 명시와 OpenMAIC 미분류 성적 항목 수정
+- [x] Canvas IMSCC 가져오기 스냅샷과 REST plan verify 단계를 설계서와 비교하는 오프라인 `coursespec verify-lms`
 - [ ] 허브에 실행기(apply) 탑재: 계획 미리보기 → 일괄 승인 → 실행 → 배포 기록
 - [ ] moodle-agent-mcp 보강 제안 반영 ([publishing.md](publishing.md))
 
