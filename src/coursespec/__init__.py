@@ -3,4 +3,4 @@
 from .spec import Spec, SpecError, load_spec
 
 __all__ = ["Spec", "SpecError", "load_spec"]
-__version__ = "0.2.1"
+__version__ = "0.3.0"

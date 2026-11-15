@@ -1,5 +1,14 @@
 # 변경 내역
 
+## 0.3.0
+- `coursespec diff SPEC --target moodle --course-id N --start YYYY-MM-DD --outline FILE`: 설계서와 실행기가 읽어 온 LMS 스냅샷(`get_course_outline`, 선택 `gradebook_overview`, 배포 기록)의 차이 계획. 네트워크 호출·삭제 없음
+- diff 매칭: `cs:<설계서 id>:<활동 id>` ID number → 배포 기록 cmid → 같은 섹션·modname·이름. 모호하면 추측하지 않음
+- diff 동작: create·update·hide(숨김)만 만들고, 마지막 배포 이후 LMS에서 직접 바뀐 값은 드리프트로 보고. `--accept-drift` 없이는 덮어쓰지 않고 종료 코드 2
+- 배포 기록(record) JSON 형식과 apply 후 기록 절차 문서화, diff 결과에 제안 record 포함
+- Moodle 새 강좌 `create_course`에 `visible`(기본 0)와 `enablecompletion`(기본 1) 포함. CLI `--visible`, `--enable-completion/--no-enable-completion`
+- 새 강좌의 기본 공지 포럼은 수정·숨김·삭제하지 않는다는 변환 보고 추가
+- OpenMAIC 강의 성적 처리 수정: 성적 설정이 없으면 grade 0으로 만들고 경고, 범주 없는 성적은 미분류 항목이 됨을 경고. 예시 w4 강의의 불필요한 100점 항목 제거
+
 ## 0.2.1
 - `coursespec export SPEC --format imscc`: IMS Common Cartridge 1.3 ZIP 내보내기 (네트워크 호출 없음)
 - `coursespec verify PACKAGE.imscc`: 공식 1EdTech XSD 와 ZIP 참조·가져오기 호환성 로컬 검증

@@ -10,6 +10,7 @@
 - 세 프로젝트(CourseSpec·OpenMAIC·DeepTutor)는 서로 직접 부르지 않습니다. 공유 계약은 `docs/integration.md` 에 있습니다.
 - OpenMAIC API 형식을 바꾸기 전에 THU-MAIC/OpenMAIC 의 `app/api/` 코드를 확인하세요.
 - IMS Common Cartridge XSD 는 `schema/imscc/` 의 공식 1EdTech 파일을 그대로 씁니다. 수정하지 말고, 바꿔야 하면 `schema/imscc/NOTICE.md` 와 출처를 먼저 확인하세요.
+- `coursespec diff` 도 네트워크를 호출하지 않습니다. 실행기가 읽어 온 `--outline`/`--gradebook` JSON 과 `--record` 배포 기록만 비교하며, 삭제 단계를 만들지 않고 이전 활동은 숨김으로 제안합니다.
 - `coursespec export`/`verify` 도 네트워크를 호출하지 않습니다. XSD 는 로컬 resolver 로만 읽고(`no_network=True`), 비표준 Canvas/Moodle 확장을 만들지 않습니다.
 - CC 에 없는 기능은 `ExportResult.conversions` 에 `info`/`warn`/`loss` 로 남기세요. 조용히 버리지 않습니다.
 - 과정 설계 스킬은 `skills/design-agent/SKILL.md` 입니다. 초안은 lint 루프로 다듬고, 저장 후 수정은 반드시 `coursespec patch` 로만 합니다.

@@ -36,6 +36,8 @@ coursespec plan     examples/ai-agent-education.coursespec.yaml --target canvas 
 coursespec plan     examples/ai-agent-education.coursespec.yaml --target openmaic --server ubion-maic
 coursespec plan     ... --json      # 실행기(에이전트·허브)가 읽는 형식
 
+coursespec diff       course.yaml --target moodle --course-id 11 --start 2027-03-02 \
+                      --outline outline.json [--gradebook gradebook.json] [--record record.json] [--accept-drift]
 coursespec export   examples/ai-agent-education.coursespec.yaml --format imscc --out course.imscc
 coursespec verify   course.imscc    # 공식 CC 1.3 XSD 로 로컬 검증 (네트워크 없음)
 
@@ -43,7 +45,7 @@ coursespec patch      course.yaml ops.json [--dry-run]      # 검증된 JSON Pat
 coursespec tutor-pack course.yaml --start 2027-03-02 --out tutor/   # tutor-pack.json + SKILL.md
 ```
 
-`plan`과 `export`는 네트워크를 호출하지 않습니다. 실행은 계획을 읽은 에이전트나 허브가 합니다 ([docs/publishing.md](docs/publishing.md)).
+`plan`·`diff`·`export`는 네트워크를 호출하지 않습니다. `diff`는 실행기가 읽어 온 LMS 스냅샷 JSON과 마지막 배포 기록을 입력으로 받아 생성·수정·숨김 단계만 만듭니다(삭제 없음). 실행은 계획을 읽은 에이전트나 허브가 합니다 ([docs/publishing.md](docs/publishing.md)).
 
 `export --format imscc`는 IMS Common Cartridge 1.3 ZIP(`imsmanifest.xml`이 ZIP 루트)을 만들고,
 같은 검증을 바로 실행합니다. 표준 CC에 없는 기능은 변환 보고서에 `info`/`warn`/`loss`로 남깁니다.
@@ -102,7 +104,7 @@ units:
 | `docs/` | 개념, 작성 안내, LMS 매핑, 배포 프로토콜, 연동(OpenMAIC·DeepTutor), 로드맵 |
 | `tests/` | 스키마·린트·퍼블리셔·CC 내보내기/검증·설계 스킬 테스트 |
 
-## 현재 상태 (v0.2.1)
+## 현재 상태 (v0.3.0)
 
 - 스키마·린트·Moodle 계획: moodle-agent-mcp 도구 시그니처 기준으로 작성, 단위 테스트 완료. 실서버 실행 검증은 아직입니다.
 - Canvas 계획: REST API v1 / New Quizzes API 기준 **초안**입니다. `verify` 표시 단계는 실제 인스턴스에서 형식 확인이 필요합니다.
@@ -110,7 +112,7 @@ units:
 - IMS Common Cartridge 1.3 내보내기와 로컬 XSD 검증: 완료. 실 LMS 가져오기 검증은 아직입니다.
 - 설계 에이전트 스킬(최소): 초안 작성·린트 루프·패치 전용 수정 규칙.
 - 튜터 팩: 제품 중립 JSON + SKILL.md. DeepTutor 연결은 학습자 권한 체계 이후입니다.
-- 실행기(apply), 재배포 매칭, 드리프트 감지는 [로드맵](docs/roadmap.md)에 있습니다. 변경 내역은 [CHANGELOG.md](CHANGELOG.md).
+- 재배포 diff와 드리프트 감지: 실행기가 넘긴 LMS 스냅샷·배포 기록을 쓰는 네트워크 없는 `coursespec diff`로 제공합니다. 실제 apply 실행기는 [로드맵](docs/roadmap.md)에 있습니다. 변경 내역은 [CHANGELOG.md](CHANGELOG.md).
 
 ## 관련 저장소
 

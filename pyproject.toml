@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "coursespec"
-version = "0.2.1"
+version = "0.3.0"
 description = "LMS 중립 과정 설계서(CourseSpec)와 Moodle·Canvas 퍼블리셔"
 readme = "README.md"
 requires-python = ">=3.11"

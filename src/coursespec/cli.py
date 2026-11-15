@@ -4,6 +4,7 @@
     coursespec lint       SPEC
     coursespec plan       SPEC --target moodle|canvas --start YYYY-MM-DD [--course-id N] [--json]
     coursespec plan       SPEC --target openmaic [--server NAME] [--regenerate] [--json]
+    coursespec diff       SPEC --target moodle --course-id N --start YYYY-MM-DD --outline FILE [--json]
     coursespec export     SPEC --format imscc [--out FILE] [--force]
     coursespec verify     PACKAGE.imscc
     coursespec patch      SPEC PATCH.json|- [--dry-run]
@@ -38,11 +39,30 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--start", type=date.fromisoformat, help="과정 시작일 YYYY-MM-DD (LMS 대상은 필수)")
     p.add_argument("--course-id", type=int, help="기존 강좌에 배포")
     p.add_argument("--category-id", type=int, default=1, help="moodle: 새 강좌 카테고리")
+    p.add_argument("--visible", type=int, choices=[0, 1], default=0, help="moodle: 새 강좌 공개 여부 (기본 0)")
+    p.add_argument(
+        "--enable-completion",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="moodle: 새 강좌의 완료 추적 (기본 켜짐)",
+    )
     p.add_argument("--account-id", type=int, help="canvas: 새 강좌를 만들 계정")
     p.add_argument("--server", help="openmaic: 수업 기록에 남길 서버 이름")
     p.add_argument("--regenerate", action="store_true", help="openmaic: 이미 생성된 수업도 다시 생성")
     p.add_argument("--json", action="store_true", help="실행기용 JSON 출력")
     p.add_argument("--force", action="store_true", help="린트 오류가 있어도 계획 생성")
+
+    p = sub.add_parser("diff", help="LMS 스냅샷과 설계서의 차이 계획 (네트워크 호출 없음)")
+    p.add_argument("spec")
+    p.add_argument("--target", choices=["moodle"], required=True)
+    p.add_argument("--course-id", type=int, required=True)
+    p.add_argument("--start", type=date.fromisoformat, required=True)
+    p.add_argument("--outline", required=True, help="get_course_outline 결과 JSON")
+    p.add_argument("--gradebook", help="gradebook_overview 결과 JSON (선택)")
+    p.add_argument("--record", help="마지막 배포 기록 JSON (선택)")
+    p.add_argument("--accept-drift", action="store_true", help="LMS 에서 직접 바뀐 값을 덮어쓴다")
+    p.add_argument("--json", action="store_true", help="실행기용 JSON 출력")
+    p.add_argument("--force", action="store_true", help="린트 오류가 있어도 차이 계획 생성")
 
     p = sub.add_parser("export", help="IMS Common Cartridge 등 패키지 내보내기 (네트워크 호출 없음)")
     p.add_argument("spec")
@@ -90,6 +110,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "export":
         return _export(args, spec)
 
+    if args.cmd == "diff":
+        return _diff(args, spec)
+
     if args.cmd == "tutor-pack":
         pack = tutor_pack(spec, args.start)
         if args.out:
@@ -106,7 +129,12 @@ def main(argv: list[str] | None = None) -> int:
         _print_errors(f"--target {args.target} 에는 --start 가 필요합니다.", [])
         return 2
     if args.target == "moodle":
-        kwargs = {"course_id": args.course_id, "category_id": args.category_id}
+        kwargs = {
+            "course_id": args.course_id,
+            "category_id": args.category_id,
+            "visible": args.visible,
+            "enablecompletion": 1 if args.enable_completion else 0,
+        }
     elif args.target == "canvas":
         kwargs = {"course_id": args.course_id, "account_id": args.account_id}
     else:
@@ -145,6 +173,45 @@ def _check_specs(args: argparse.Namespace) -> int:
         if errors:
             status = 1
     return status
+
+
+def _read_json(path: str, label: str):
+    try:
+        return json.loads(Path(path).read_text("utf-8"))
+    except OSError as exc:
+        _print_errors(f"{label} 파일을 읽지 못했습니다: {exc}", [])
+    except json.JSONDecodeError as exc:
+        _print_errors(f"{label} JSON 구문 오류: {exc}", [])
+    return None
+
+
+def _diff(args: argparse.Namespace, spec) -> int:
+    from .diff import diff_moodle
+
+    outline = _read_json(args.outline, "--outline")
+    if outline is None:
+        return 2
+    gradebook = _read_json(args.gradebook, "--gradebook") if args.gradebook else None
+    if args.gradebook and gradebook is None:
+        return 2
+    record = _read_json(args.record, "--record") if args.record else None
+    if args.record and record is None:
+        return 2
+    try:
+        result = diff_moodle(
+            spec,
+            args.start,
+            args.course_id,
+            outline,
+            gradebook=gradebook,
+            record=record,
+            accept_drift=args.accept_drift,
+        )
+    except ValueError as exc:
+        _print_errors(str(exc), [])
+        return 2
+    print(json.dumps(result.to_dict(), ensure_ascii=False, indent=2) if args.json else result.to_text())
+    return 2 if result.blocked else 0
 
 
 def _export(args: argparse.Namespace, spec) -> int:

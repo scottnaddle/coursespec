@@ -31,6 +31,8 @@ def plan_moodle(
     start: date,
     course_id: int | None = None,
     category_id: int = 1,
+    visible: int = 0,
+    enablecompletion: int = 1,
 ) -> Plan:
     tl = Timeline(start, spec.timezone)
     plan = Plan("moodle", spec.id, spec.data.get("version"), start.isoformat())
@@ -48,6 +50,8 @@ def plan_moodle(
                 "numsections": len(spec.units),
                 "startdate": tl.unix(1),
                 "summary": to_html(spec.data.get("summary")),
+                "visible": int(visible),
+                "enablecompletion": int(enablecompletion),
             },
             "강좌 생성",
             binds={"course.id": "courseid"},
@@ -60,7 +64,14 @@ def plan_moodle(
                  "summary": to_html(unit.get("summary"))},
                 f"섹션 {section_of[unit['id']]} 이름·요약: {unit['title']}",
             )  # fmt: skip
-        plan.note("course", "info", "강좌의 '이수 추적'이 켜져 있어야 완료 조건이 동작합니다 (create_course 는 사이트 기본값을 따름).")
+        plan.note(
+            "course",
+            "info",
+            "Moodle은 새 강좌에 기본 공지 포럼(예: '강좌공지')을 자동으로 만듭니다. "
+            "설계서에 없는 활동이며 이 계획은 그 포럼을 수정·숨김·삭제하지 않습니다.",
+        )
+        if not enablecompletion:
+            plan.note("course", "warn", "완료 추적(enablecompletion)이 꺼져 있어 활동 완료 조건이 동작하지 않습니다.")
     else:
         binds = {f"{u['id']}.section": f"sections.{i}.section" for i, u in enumerate(spec.units)}
         plan.add(
@@ -124,6 +135,15 @@ def plan_moodle(
         if "min_course_grade" in crit:
             plan.note(badge["id"], "warn", "과정 성적 기준 배지는 Moodle 강좌 이수 설정이 되어 있어야 동작합니다.")
 
+    return plan
+
+
+def plan_item_steps(
+    spec: Spec, start: date, course: Any, section: Any, item: dict[str, Any]
+) -> Plan:
+    """활동 하나만 만드는 단계. diff 의 create 단계가 같은 규칙을 쓰도록 분리한다."""
+    plan = Plan("moodle", spec.id, spec.data.get("version"), start.isoformat())
+    _plan_item(plan, spec, Timeline(start, spec.timezone), course, section, item)
     return plan
 
 
@@ -220,7 +240,24 @@ def _plan_item(plan: Plan, spec: Spec, tl: Timeline, course: Any, section: Any, 
 
         lec = item.get("lecture", {})
         tool = "create_openmaic"
-        args = {**base, "grade": int(grading.get("max", 100)),
+        if "grading" not in item:
+            grade = 0
+            plan.note(
+                iid,
+                "warn",
+                "성적 설정이 없어 기본 점수를 만들지 않습니다(grade 0). "
+                "카테고리 없는 성적 항목은 가중치 성적 범주 밖에 생기기 때문입니다.",
+            )
+        elif not item["grading"].get("category"):
+            grade = int(item["grading"].get("max", 100))
+            plan.note(
+                iid,
+                "warn",
+                "성적 범주가 없어 이 점수 항목이 강좌 총점 아래의 미분류 항목으로 남습니다.",
+            )
+        else:
+            grade = int(item["grading"].get("max", 100))
+        args = {**base, "grade": grade,
                 "completion_min_progress": lec.get("min_progress", 80) if mode == "view" else 0,
                 "settings": settings}  # fmt: skip
         if lec.get("classroom"):

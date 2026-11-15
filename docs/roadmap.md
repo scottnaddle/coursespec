@@ -16,17 +16,19 @@
 - [x] 튜터 팩 (`coursespec tutor-pack`): 학습목표 지도, 튜터 자료, 학업 정직성 규칙, SKILL.md
 - [ ] OpenMAIC 실서버에서 자료 업로드·생성·스냅샷 검증, mod_openmaic `lecture_id` 호환 확인
 
-## v0.2.1 — CC 내보내기와 설계 스킬 (현재)
+## v0.2.1 — CC 내보내기와 설계 스킬
 - [x] IMS Common Cartridge 1.3 내보내기 (`coursespec export --format imscc`)
 - [x] 공식 1EdTech XSD 기반 로컬 검증 (`coursespec verify`), ZIP 참조·가져오기 호환성 점검
 - [x] 표준 CC 에 없는 기능의 변환 보고서(info/warn/loss)
 - [x] 과정 설계 에이전트 최소 스킬 (`skills/design-agent/SKILL.md`)과 데모
 - [ ] 내보낸 `.imscc` 를 Moodle·Canvas 실제 인스턴스에서 가져오기 검증
-- 범위 밖으로 남김: DeepTutor 연결, xAPI, COURSEMOS 퍼블리셔, 실행기(apply)·드리프트 감지
+- 범위 밖으로 남김: DeepTutor 연결, xAPI, COURSEMOS 퍼블리셔, 실행기(apply)
 
-## v0.3 — 실행과 재배포
+## v0.3 — 실행과 재배포 (현재)
+- [x] ID number·배포 기록 기반 매칭과 네트워크 없는 diff 계획 (`coursespec diff`, 생성·수정·숨김)
+- [x] 마지막 배포 기록 대비 드리프트 보고와 `--accept-drift` 승인, 삭제 없는 숨김 제안
+- [x] 새 강좌 `visible`·`enablecompletion` 명시와 OpenMAIC 미분류 성적 항목 수정
 - [ ] 허브에 실행기(apply) 탑재: 계획 미리보기 → 일괄 승인 → 실행 → 배포 기록
-- [ ] ID number 기반 매칭과 diff 계획 (생성·수정·숨김)
 - [ ] moodle-agent-mcp 보강 제안 반영 ([publishing.md](publishing.md))
 
 ## v0.4 — 설계 워크스페이스와 운영 피드백
@@ -35,7 +37,6 @@
 - [ ] 허브 LLM 관문: OpenMAIC·DeepTutor 엔드포인트 연결, 스트리밍 지원, 자유 대화문 가명처리 검증
 - [ ] DeepTutor 연결: 학습자 단위 권한, 튜터 팩 로딩
 - [ ] 방법론 스킬: 백워드 디자인, ADDIE, 플립러닝, KOICA PDM 연계
-- [ ] 드리프트 감지
 - [ ] 운영 결과 집계(가명처리, xAPI + `cs:` 식별자) → 다음 학기 개정 제안 (JSON Patch)
 
 ## 이후

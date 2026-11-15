@@ -29,12 +29,18 @@ def test_example_plan_resolves_end_to_end():
     calls = run(plan)
     tools = [t for t, _ in calls]
     assert tools[0] == "create_course"
+    course = next(a for t, a in calls if t == "create_course")
+    assert course["visible"] == 0 and course["enablecompletion"] == 1
     assert tools.count("update_section") == 4
     # 접근 제한·성적부·배지는 활동 생성 뒤에 온다
     last_create = max(i for i, t in enumerate(tools) if t.startswith("create_") and t not in ("create_badge",))
     assert tools.index("set_access_restriction") > last_create
     assert tools[-1] == "create_badge"
     assert all("${" not in str(a) for _, a in calls)
+    assert any(
+        c.where == "course" and c.severity == "info" and "공지 포럼" in c.message
+        for c in plan.conversions
+    )
 
 
 def test_ids_are_embedded_for_redeploy():
@@ -85,3 +91,20 @@ def test_completion_fallback_and_workshop(example_data):
     comp = [s.args for s in plan.steps if s.tool == "set_completion"]
     assert {"cmid": "${w3-peer.cmid}", "mode": "grade"} in [{k: c[k] for k in ("cmid", "mode")} for c in comp]
     assert any(c.where == "w3-peer" and c.severity == "warn" for c in plan.conversions)
+
+
+def test_new_course_completion_off_warns(minimal):
+    plan = plan_moodle(from_data(minimal()), START, enablecompletion=0)
+    course = next(s for s in plan.steps if s.tool == "create_course")
+    assert course.args["enablecompletion"] == 0
+    assert any(c.where == "course" and c.severity == "warn" and "완료" in c.message for c in plan.conversions)
+
+
+def test_example_lecture_has_no_default_grade():
+    plan = plan_moodle(load_spec(EXAMPLE), START)
+    lecture = next(s for s in plan.steps if s.tool == "create_openmaic")
+    assert lecture.args["grade"] == 0
+    assert any(
+        c.where == "w4-lecture" and c.severity == "warn" and "기본 점수" in c.message
+        for c in plan.conversions
+    )
