@@ -1,0 +1,99 @@
+# design-agent 스킬 데모: examples/design-agent-demo/syllabus.md 를 옮긴 2주 과정입니다.
+# 모든 날짜는 과정 시작일(1일차) 기준 상대 일수입니다.
+coursespec: "0.2"
+id: ai-ethics-intro
+version: 0.1.0
+title: AI 윤리 입문
+shortname: AIETHICS
+language: ko
+timezone: Asia/Seoul
+summary: |
+  AI 윤리의 핵심 쟁점을 이해하고, 생활 속 사례를 분석한 뒤 자신의 AI 활용 원칙과 실천 계획을 세우는 2주 과정입니다.
+
+outcomes:
+  - id: lo1
+    statement: AI 윤리의 핵심 쟁점인 편향, 개인정보, 책임을 설명할 수 있다.
+    level: understand
+  - id: lo2
+    statement: AI 활용 사례를 윤리 원칙에 따라 분석할 수 있다.
+    level: analyze
+  - id: lo3
+    statement: 자신의 AI 활용 원칙과 실천 계획을 작성할 수 있다.
+    level: create
+
+grading:
+  aggregation: weighted_mean
+  categories:
+    - {id: participation, name: 참여, weight: 20}
+    - {id: assignments, name: 과제, weight: 80}
+
+units:
+  - id: w1
+    title: 1주차 — AI 윤리의 핵심 쟁점
+    summary: 편향, 개인정보, 책임의 세 가지 쟁점을 살펴봅니다.
+    items:
+      - id: w1-reading
+        type: page
+        title: 읽기 — 편향, 개인정보, 책임
+        outcomes: [lo1]
+        estimated_minutes: 30
+        content: |
+          ## 세 가지 핵심 쟁점
+          1. **편향**: 학습 데이터의 편향이 판단을 왜곡할 수 있습니다.
+          2. **개인정보**: 어떤 데이터를 수집하고 얼마나 보관하는지가 중요합니다.
+          3. **책임**: AI의 판단이 잘못됐을 때 누가 책임지는지 정해야 합니다.
+        completion: {mode: view}
+
+      - id: w1-forum
+        type: discussion
+        title: 토론 — 생활 속 AI 윤리 사례
+        outcomes: [lo1]
+        estimated_minutes: 20
+        discussion: {style: general}
+        grading: {max: 10, category: participation}
+        completion: {mode: posts, posts: 1}
+
+      - id: w1-quiz
+        type: quiz
+        title: 1주차 확인 퀴즈
+        outcomes: [lo1]
+        estimated_minutes: 15
+        due_day: 7
+        grading: {max: 10, category: assignments}
+        quiz: {attempts: 2, grade_method: highest}
+        completion: {mode: pass, pass_grade: 6}
+        questions:
+          - type: multichoice
+            text: AI 윤리의 핵심 쟁점으로 가장 알맞은 것은?
+            choices:
+              - {text: "편향, 개인정보, 책임", correct: true}
+              - {text: "속도, 용량, 가격"}
+              - {text: "화면 크기, 배터리, 무게"}
+          - type: truefalse
+            text: AI가 낸 판단의 책임 소재를 정하는 것도 윤리 설계의 일부이다.
+            answer: true
+
+  - id: w2
+    title: 2주차 — 사례 분석과 실천 원칙
+    opens_day: 8
+    summary: 채용 AI 사례를 분석하고 자신의 실천 계획을 세웁니다.
+    items:
+      - id: w2-case
+        type: page
+        title: 사례 — 채용 AI와 개인정보
+        outcomes: [lo2]
+        estimated_minutes: 30
+        content: |
+          채용 AI가 지원자의 이력서를 자동으로 거르는 장면을 생각해 봅시다.
+          어떤 데이터를 쓰는지, 설명 가능한지, 이의를 제기할 수 있는지 점검합니다.
+        completion: {mode: view}
+
+      - id: w2-assignment
+        type: assignment
+        title: 과제 — 나의 AI 활용 원칙과 실천 계획
+        outcomes: [lo2, lo3]
+        estimated_minutes: 90
+        due_day: 14
+        grading: {max: 100, category: assignments}
+        submission: {types: [text]}
+        completion: {mode: submit}

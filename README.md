@@ -1,0 +1,120 @@
+# CourseSpec
+
+> 교수자가 LMS 밖에서 과정을 설계하고, 배포할 때만 Moodle·Canvas로 내보내는 **LMS 중립 과정 설계서**와 그 퍼블리셔입니다.
+
+[moodle-agent-mcp](https://github.com/scottnaddle/moodle-agent-mcp)가 "에이전트가 Moodle을 다루는 손"이라면, CourseSpec은 그 앞단의 "설계 원본"입니다. 과정 설계 에이전트는 이 설계서를 검증된 패치로 다듬고, 퍼블리셔는 설계서를 각 대상의 호출 계획으로 바꿉니다.
+
+```
+교수자 워크스페이스 ──> CourseSpec(원본, 버전 관리) ──> 린트 ──> 퍼블리셔(plan) ──승인──> 실행(apply)
+        ▲                                                           ├─ openmaic → 몰입형 수업 생성 → 설계서에 기록
+        └──────────── 검증된 JSON Patch ◀───────────────────────────┤
+                                                                    ├─ moodle   → moodle-agent-mcp 도구 호출
+                                                                    ├─ canvas   → Canvas REST / (향후) 공식 MCP
+                                                                    └─ tutor-pack → DeepTutor 등 학습자 튜터 설정
+```
+
+OpenMAIC(수업 생성)·DeepTutor(학습자 튜터)와는 직접 결합하지 않고 CourseSpec의 공유 계약(식별자·학습목표·자료 매니페스트)으로 연동합니다: [docs/integration.md](docs/integration.md)
+
+## 왜 별도 설계서인가
+
+- **원본은 교수자 소유**: Moodle은 배포·운영 환경이고, 설계는 그 밖에서 계속 관리됩니다. 학생 개인정보는 설계서에 들어오지 않습니다.
+- **LMS 중립**: 같은 설계서를 Moodle과 Canvas에 배포합니다. LMS 간 차이는 퍼블리셔가 *변환 보고서*로 알려 주고, 교수자가 알고 승인합니다.
+- **학기 재사용**: 날짜는 "시작일 기준 N일차"로 적고, 배포할 때 실제 날짜를 정합니다.
+- **배포 전 검토**: 학습목표–활동–평가 정렬, 선수조건 순환, 성적 가중치, 주차별 학습 부담을 린트로 점검합니다.
+
+자세한 배경은 [docs/concept.md](docs/concept.md)를 보세요.
+
+## 빠른 시작
+
+```bash
+pip install -e ".[test]"
+
+coursespec validate examples/ai-agent-education.coursespec.yaml
+coursespec lint     examples/ai-agent-education.coursespec.yaml
+coursespec plan     examples/ai-agent-education.coursespec.yaml --target moodle --start 2027-03-02
+coursespec plan     examples/ai-agent-education.coursespec.yaml --target canvas --start 2027-03-02 --account-id 1
+coursespec plan     examples/ai-agent-education.coursespec.yaml --target openmaic --server ubion-maic
+coursespec plan     ... --json      # 실행기(에이전트·허브)가 읽는 형식
+
+coursespec export   examples/ai-agent-education.coursespec.yaml --format imscc --out course.imscc
+coursespec verify   course.imscc    # 공식 CC 1.3 XSD 로 로컬 검증 (네트워크 없음)
+
+coursespec patch      course.yaml ops.json [--dry-run]      # 검증된 JSON Patch 수정
+coursespec tutor-pack course.yaml --start 2027-03-02 --out tutor/   # tutor-pack.json + SKILL.md
+```
+
+`plan`과 `export`는 네트워크를 호출하지 않습니다. 실행은 계획을 읽은 에이전트나 허브가 합니다 ([docs/publishing.md](docs/publishing.md)).
+
+`export --format imscc`는 IMS Common Cartridge 1.3 ZIP(`imsmanifest.xml`이 ZIP 루트)을 만들고,
+같은 검증을 바로 실행합니다. 표준 CC에 없는 기능은 변환 보고서에 `info`/`warn`/`loss`로 남깁니다.
+`verify`는 공식 1EdTech XSD(저장소의 `schema/imscc/`)로 매니페스트·과제·토론·QTI를 오프라인 검증합니다.
+
+과정 설계 에이전트는 [skills/design-agent/SKILL.md](skills/design-agent/SKILL.md)를 따릅니다.
+강의계획서 텍스트로 초안을 만들고 `coursespec lint` 루프를 돈 뒤, 저장된 설계서는
+`coursespec patch`로만 고칩니다. 데모는 [examples/design-agent-demo/](examples/design-agent-demo/)에 있습니다.
+
+## 설계서 한눈에 보기
+
+```yaml
+coursespec: "0.2"
+id: ai-agent-education
+title: AI 에이전트 시대의 교육
+outcomes:
+  - { id: lo1, statement: AI 에이전트를 스킬·파이프라인·플러그인과 구분해 설명할 수 있다., level: understand }
+grading:
+  categories: [{ id: quizzes, name: 퀴즈, weight: 20 }, ...]
+units:
+  - id: w1
+    title: 1주차 — AI 에이전트란 무엇인가
+    items:
+      - { id: w1-reading, type: page, title: 읽기 자료, content: "...", outcomes: [lo1], completion: { mode: view } }
+      - id: w1-quiz
+        type: quiz
+        requires: [w1-reading]
+        due_day: 7
+        grading: { max: 10, category: quizzes }
+        completion: { mode: pass, pass_grade: 6 }
+        questions: [...]
+```
+
+전체 예시: [examples/ai-agent-education.coursespec.yaml](examples/ai-agent-education.coursespec.yaml) · 필드 안내: [docs/spec-guide.md](docs/spec-guide.md) · 스키마: [schema/coursespec.schema.json](schema/coursespec.schema.json)
+
+## 활동 유형
+
+| 구분 | 유형 | Moodle | Canvas |
+|---|---|---|---|
+| 공통 코어 | `page` `file` `assignment` `quiz` `discussion` | 대응 | 대응 (일부 옵션 변환) |
+| 확장 | `peer_review` | 워크숍 | 동료 검토 과제 (평가 점수 손실) |
+| 확장 | `wiki` `glossary` | 위키 · 용어집 | 학생 편집 페이지 · 토론 |
+| 확장 | `interactive_lecture` | OpenMAIC (mod_openmaic) | 내보낸 HTML·동영상 (상호작용 손실), 없으면 제외 |
+| 확장 | `survey` `h5p` | 피드백 · H5P | 배포 제외 |
+
+변환 규칙 전체: [docs/lms-mapping.md](docs/lms-mapping.md)
+
+## 저장소 구성
+
+| 경로 | 내용 |
+|---|---|
+| `schema/` | JSON Schema (2020-12)와 공식 CC 1.3 XSD(`schema/imscc/`). 다른 언어 구현도 JSON Schema를 기준으로 합니다 |
+| `src/coursespec/` | 로더·린트·타임라인·퍼블리셔·CC 내보내기/검증·CLI (Python 3.11+) |
+| `skills/` | 과정 설계 에이전트 스킬(SKILL.md) |
+| `examples/` | 예시 설계서와 design-agent 데모 |
+| `docs/` | 개념, 작성 안내, LMS 매핑, 배포 프로토콜, 연동(OpenMAIC·DeepTutor), 로드맵 |
+| `tests/` | 스키마·린트·퍼블리셔·CC 내보내기/검증·설계 스킬 테스트 |
+
+## 현재 상태 (v0.2.1)
+
+- 스키마·린트·Moodle 계획: moodle-agent-mcp 도구 시그니처 기준으로 작성, 단위 테스트 완료. 실서버 실행 검증은 아직입니다.
+- Canvas 계획: REST API v1 / New Quizzes API 기준 **초안**입니다. `verify` 표시 단계는 실제 인스턴스에서 형식 확인이 필요합니다.
+- OpenMAIC 생성 계획: THU-MAIC/OpenMAIC 저장소 코드(2026-11)의 API 기준. 실서버 검증 전입니다.
+- IMS Common Cartridge 1.3 내보내기와 로컬 XSD 검증: 완료. 실 LMS 가져오기 검증은 아직입니다.
+- 설계 에이전트 스킬(최소): 초안 작성·린트 루프·패치 전용 수정 규칙.
+- 튜터 팩: 제품 중립 JSON + SKILL.md. DeepTutor 연결은 학습자 권한 체계 이후입니다.
+- 실행기(apply), 재배포 매칭, 드리프트 감지는 [로드맵](docs/roadmap.md)에 있습니다. 변경 내역은 [CHANGELOG.md](CHANGELOG.md).
+
+## 관련 저장소
+
+- [moodle-agent-mcp](https://github.com/scottnaddle/moodle-agent-mcp) — Moodle MCP 서버 (Moodle 퍼블리셔의 실행 대상)
+- [moodle-local_ubionai](https://github.com/scottnaddle/moodle-local_ubionai) — MCP가 의존하는 Moodle 로컬 플러그인
+- [THU-MAIC/OpenMAIC](https://github.com/THU-MAIC/OpenMAIC) — 멀티에이전트 인터랙티브 수업 생성 (수업 생성 대상)
+- [HKUDS/DeepTutor](https://github.com/HKUDS/DeepTutor) — 학습자 튜터 (튜터 팩의 대상)

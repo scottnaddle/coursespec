@@ -1,0 +1,232 @@
+# 데모 영상의 "4주차 강좌"를 CourseSpec으로 표현한 예시입니다 (v0.2: 자료 매니페스트와 OpenMAIC 수업 참조 포함).
+# 날짜는 모두 과정 시작일(1일차) 기준 상대 일수입니다. 실제 날짜는 배포할 때 --start 로 정합니다.
+coursespec: "0.2"
+id: ai-agent-education
+version: 0.2.0
+title: AI 에이전트 시대의 교육
+shortname: AIAGENT-EDU
+language: ko
+timezone: Asia/Seoul
+authors: [Scott]
+summary: |
+  교사가 AI 에이전트의 개념과 한계를 이해하고, 자신의 수업에 에이전트를 설계·적용하는 과정입니다.
+
+outcomes:
+  - id: lo1
+    statement: AI 에이전트를 스킬·파이프라인·플러그인과 구분해 설명할 수 있다.
+    level: understand
+  - id: lo2
+    statement: 수업 장면에 맞는 에이전트 활용 시나리오를 설계할 수 있다.
+    level: create
+  - id: lo3
+    statement: 에이전트 활용의 윤리·개인정보 위험을 평가할 수 있다.
+    level: evaluate
+
+# 자료 매니페스트: 어떤 자료를 콘텐츠 생성(generation)·튜터 지식베이스(tutor)·학습자 배포(learner)에 쓸 수 있는지.
+materials:
+  - id: m-autonomy
+    title: 자율성의 네 단계 — 스킬에서 에이전트까지 (강의 노트)
+    kind: document
+    source: materials/autonomy-levels.md
+    units: [w1]
+    outcomes: [lo1]
+    uses: [generation, tutor, learner]
+    rights: {owner: Scott, license: own}
+  - id: m-scenarios
+    title: 수업 속 에이전트 활용 사례집
+    kind: document
+    source: materials/agent-scenarios.pdf
+    units: [w2, w3]
+    outcomes: [lo2]
+    uses: [generation, tutor]
+    rights: {owner: UBION, license: internal-only, notes: 학습자 배포 불가}
+  - id: m-ethics
+    title: 교실 속 AI 윤리와 학생 데이터 보호 지침
+    kind: document
+    source: materials/ai-ethics-guide.pdf
+    units: [w4]
+    outcomes: [lo3]
+    uses: [generation, tutor, learner]
+    rights: {owner: Scott, license: cc-by-4.0}
+
+grading:
+  aggregation: weighted_mean
+  categories:
+    - {id: quizzes, name: 퀴즈, weight: 20}
+    - {id: participation, name: 토론 참여, weight: 20}
+    - {id: projects, name: 설계 과제, weight: 60}
+
+policies:
+  workload:
+    max_minutes_per_unit: 240
+
+units:
+  - id: w1
+    title: 1주차 — AI 에이전트란 무엇인가
+    summary: 스킬에서 에이전트까지, 자율성의 단계를 살펴봅니다.
+    items:
+      - id: w1-reading
+        type: page
+        title: 읽기 자료 — 스킬·파이프라인·플러그인·에이전트
+        outcomes: [lo1]
+        estimated_minutes: 40
+        content: |
+          ## 자율성의 네 단계
+          1. **스킬**: 한 가지 작업을 잘하는 지시문
+          2. **파이프라인**: 여러 단계를 정해진 순서로 연결
+          3. **플러그인**: 외부 도구와 연결
+          4. **에이전트**: 목표를 받아 스스로 계획하고 도구를 고름
+        video_url: https://youtu.be/3HzwHaY5cY8
+        completion: {mode: view}
+
+      - id: w1-notes
+        type: file
+        title: 강의 노트 내려받기
+        material: m-autonomy
+        outcomes: [lo1]
+        estimated_minutes: 10
+
+      - id: w1-quiz
+        type: quiz
+        title: 1주차 확인 퀴즈
+        outcomes: [lo1]
+        estimated_minutes: 15
+        requires: [w1-reading]
+        due_day: 7
+        grading: {max: 10, category: quizzes}
+        quiz: {time_limit_minutes: 15, attempts: 2, grade_method: highest}
+        completion: {mode: pass, pass_grade: 6}
+        questions:
+          - type: multichoice
+            text: 목표를 받아 스스로 계획하고 도구를 선택하는 단계는?
+            choices:
+              - {text: 스킬}
+              - {text: 파이프라인}
+              - {text: 에이전트, correct: true, feedback: 맞습니다. 계획과 도구 선택의 자율성이 핵심입니다.}
+          - type: truefalse
+            text: 파이프라인은 실행 순서를 스스로 바꿀 수 있다.
+            answer: false
+          - type: essay
+            text: 여러분 수업에서 '플러그인' 수준으로 바로 쓸 수 있는 예를 하나 쓰세요.
+            mark: 2
+            grader_info: 외부 도구 연결이 드러나면 만점.
+
+      - id: w1-forum
+        type: discussion
+        title: 자기소개와 AI 활용 경험 나누기
+        outcomes: [lo1]
+        estimated_minutes: 20
+        discussion: {style: general}
+        grading: {max: 10, category: participation}
+        completion: {mode: posts, posts: 2}
+
+  - id: w2
+    title: 2주차 — 수업 속 에이전트 시나리오
+    opens_day: 8
+    requires: [w1-quiz]
+    items:
+      - id: w2-cases
+        type: page
+        title: 사례 — 과제 피드백 조교 에이전트
+        outcomes: [lo2]
+        estimated_minutes: 30
+        content: |
+          과제 제출 → 루브릭 기반 피드백 초안 → **교사 검토** → 학생 전달.
+          사람의 승인 단계를 어디에 둘지가 설계의 핵심입니다.
+        completion: {mode: view}
+
+      - id: w2-glossary
+        type: glossary
+        title: 우리 반 AI 용어집
+        outcomes: [lo1]
+        estimated_minutes: 20
+        completion: {mode: manual}
+
+      - id: w2-scenario
+        type: assignment
+        title: 과제 1 — 내 수업 에이전트 시나리오
+        outcomes: [lo2]
+        estimated_minutes: 120
+        due_day: 14
+        cutoff_day: 17
+        grading: {max: 100, category: projects}
+        submission: {types: [text, file], max_files: 2}
+        completion: {mode: submit}
+        rubric:
+          name: 시나리오 루브릭
+          criteria:
+            - description: 학습목표와의 정렬
+              levels:
+                - {definition: 목표와 무관, score: 0}
+                - {definition: 부분적으로 연결, score: 20}
+                - {definition: 명확히 정렬, score: 40}
+            - description: 사람의 개입 지점 설계
+              levels:
+                - {definition: 없음, score: 0}
+                - {definition: 형식적, score: 15}
+                - {definition: 구체적이고 타당, score: 30}
+            - description: 실행 가능성
+              levels:
+                - {definition: 낮음, score: 0}
+                - {definition: 보통, score: 15}
+                - {definition: 높음, score: 30}
+
+  - id: w3
+    title: 3주차 — 동료와 함께 다듬기
+    opens_day: 15
+    items:
+      - id: w3-peer
+        type: peer_review
+        title: 시나리오 동료 평가
+        outcomes: [lo2, lo3]
+        estimated_minutes: 90
+        due_day: 19
+        grading: {max: 80, category: projects}
+        submission: {types: [text]}
+        peer_review: {assessment_max: 20, assessment_due_day: 21}
+        completion: {mode: submit}
+        rubric:
+          name: 동료 평가 기준
+          criteria:
+            - description: 개인정보 보호 고려
+              levels:
+                - {definition: 없음, score: 0}
+                - {definition: 일부, score: 25}
+                - {definition: 충분, score: 50}
+            - description: 설명의 명확성
+              levels:
+                - {definition: 불명확, score: 0}
+                - {definition: 명확, score: 50}
+
+  - id: w4
+    title: 4주차 — 윤리와 책임
+    opens_day: 22
+    items:
+      - id: w4-lecture
+        type: interactive_lecture
+        title: 멀티에이전트 강의 — 교실 속 AI 윤리
+        outcomes: [lo3]
+        estimated_minutes: 40
+        lecture:
+          engine: openmaic
+          prompt: 학생 데이터와 AI 에이전트, 교사가 지켜야 할 다섯 가지 원칙을 사례 중심으로 설명
+          materials: [m-ethics, m-scenarios]
+          min_progress: 80
+          # 생성 후 `coursespec plan --target openmaic` 실행 결과가 아래처럼 기록됩니다.
+          # classroom: {id: ..., archive: lectures/w4-lecture.stage.json}
+          # exports:   {html: lectures/w4-lecture.html}   ← Canvas 대체 경로
+        completion: {mode: view}
+
+      - id: w4-reflection
+        type: survey
+        title: 과정 성찰 설문
+        estimated_minutes: 10
+        survey: {anonymous: true}
+        completion: {mode: submit}
+
+badges:
+  - id: agent-designer
+    name: 에이전트 수업 설계자
+    description: AI 에이전트 활용 수업 시나리오를 설계하고 동료 평가를 마친 교사에게 수여합니다.
+    criteria:
+      items: [w2-scenario, w3-peer]
