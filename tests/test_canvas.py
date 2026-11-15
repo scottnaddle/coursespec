@@ -120,6 +120,11 @@ def test_classic_quiz_path_and_question_mapping(minimal):
         s.args["path"] == "/api/v1/courses/5/quizzes/${q1.id}/questions"
         for s in plan.steps if s.about.startswith("Classic 문항")
     )
+    resave = next(s for s in plan.steps if s.about.startswith("Classic 퀴즈 재저장"))
+    assert resave.args["method"] == "PUT"
+    assert resave.args["path"] == "/api/v1/courses/5/quizzes/${q1.id}"
+    assert resave.args["json"] == {"quiz": {"notify_of_update": False}}
+    assert not resave.verify
     module_item = next(s for s in plan.steps if s.about == "모듈 아이템: q1")
     assert module_item.args["json"]["module_item"]["type"] == "Quiz"
     assert not any("New Quiz" in s.about for s in plan.steps)
@@ -145,10 +150,30 @@ def test_post_import_requires_course_id():
         plan_canvas(load_spec(DEMO), START, post_import=True)
 
 
-def test_post_import_reports_unit_opens_day_loss():
+def test_post_import_sets_unit_unlock_at_from_opens_day():
     plan = plan_canvas(load_spec(DEMO), START, course_id=5, quiz_api="classic", post_import=True)
-    losses = [c for c in plan.conversions if c.where == "w2" and c.severity == "loss"]
-    assert any("opens_day" in c.message and "unlock_at" in c.message for c in losses)
+    losses = [
+        c for c in plan.conversions
+        if c.where == "w2" and c.severity == "loss" and ("opens_day" in c.message or "unlock_at" in c.message)
+    ]
+    assert losses == []
+    module = next(
+        s for s in plan.steps
+        if s.tool == "canvas_patch_imported"
+        and s.args.get("kind") == "module"
+        and s.args.get("title") == "2주차 — 사례 분석과 실천 원칙"
+    )
+    assert module.args["unit_title"] == "2주차 — 사례 분석과 실천 원칙"
+    assert module.args["fields"]["unlock_at"].startswith("2027-03-09T00:00")
+
+
+def test_post_import_classic_quiz_resaves_after_questions():
+    plan = plan_canvas(load_spec(DEMO), START, course_id=5, quiz_api="classic", post_import=True)
+    resave = next(s for s in plan.steps if s.about.startswith("Classic 퀴즈 재저장"))
+    assert resave.args["method"] == "PUT"
+    assert resave.args["path"] == "/api/v1/courses/5/quizzes/${w1-quiz.id}"
+    assert resave.args["json"] == {"quiz": {"notify_of_update": False}}
+    assert not resave.verify
 
 
 def test_post_import_plan_supplements_imported_course_without_recreating():

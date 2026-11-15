@@ -299,6 +299,10 @@ def _plan_classic_quiz(
                  {"method": "POST", "path": api(course, f"/quizzes/{ref(iid + '.id')}/questions"),
                   "json": {"question": _classic_question(plan, iid, pos, question)}},
                  f"Classic 문항 {pos}: {iid}")  # fmt: skip
+    plan.add("canvas_request",
+             {"method": "PUT", "path": api(course, f"/quizzes/{ref(iid + '.id')}"),
+              "json": {"quiz": {"notify_of_update": False}}},
+             f"Classic 퀴즈 재저장: {item['title']}")  # fmt: skip
 
 
 def _classic_settings(plan: Plan, iid: str, q: dict[str, Any]) -> dict[str, Any]:
@@ -377,10 +381,16 @@ def _plan_post_import(
     _ensure_assignment_groups(plan, spec, course)
     for unit in spec.units:
         if unit.get("opens_day"):
-            plan.note(
-                unit["id"],
-                "loss",
-                f"post-import는 아직 단원 '{unit['title']}'의 opens_day를 Canvas 모듈 unlock_at으로 설정하지 않습니다. 가져온 뒤 Canvas에서 직접 공개일을 지정하세요.",
+            plan.add(
+                "canvas_patch_imported",
+                {
+                    "course_id": course,
+                    "kind": "module",
+                    "title": unit["title"],
+                    "unit_title": unit["title"],
+                    "fields": {"unlock_at": tl.iso(unit.get("opens_day"))},
+                },
+                f"모듈 공개일: {unit['id']}",
             )
     for _, unit, item in spec.iter_items():
         _plan_post_import_item(plan, tl, course, unit, item, quiz_api)
@@ -562,6 +572,12 @@ def _plan_post_import_quiz(
             f"Classic 퀴즈 생성: {title}",
             binds={f"{iid}.id": "id"},
         )
+        plan.add(
+            "canvas_request",
+            {"method": "PUT", "path": api(course, f"/quizzes/{ref(iid + '.id')}"),
+             "json": {"quiz": {"notify_of_update": False}}},
+            f"Classic 퀴즈 재저장: {title}",
+        )  # fmt: skip
         return
 
     _plan_quiz(plan, course, item, group, dates, "new")

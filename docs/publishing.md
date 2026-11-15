@@ -57,6 +57,9 @@ coursespec plan course.yaml --target canvas --start 2027-03-02 --course-id 5 \
   New Quizzes 는 호스팅 Canvas 에서만 형식 검증이 가능하며, 오픈소스 canvas-lms 인스턴스에는 API 가 없을 수 있습니다.
 - `--canvas-quiz classic` 은 `/api/v1/courses/:id/quizzes` 와
   `/api/v1/courses/:id/quizzes/:quiz_id/questions` 로 고전 퀴즈·문항을 만듭니다(verify 플래그 없음).
+  문항을 모두 만든 뒤에는 같은 퀴즈를 PUT(`{"quiz": {"notify_of_update": false}}`)으로 재저장합니다.
+  Canvas 목록 API 가 재저장 전까지 `question_count` 0·`points_possible` null 을 유지할 수 있기 때문이며,
+  자동 게시는 하지 않습니다.
 - `--post-import` 는 `--course-id` 가 필요합니다. 강좌·모듈·활동을 다시 만들지 않고, 가져온 강좌를
   제목으로 찾아 다음 전용 단계만 만듭니다.
   - `canvas_ensure_assignment_groups` `{course_id, groups:[{id,name,weight}], apply_weights}`
@@ -69,10 +72,19 @@ coursespec plan course.yaml --target canvas --start 2027-03-02 --course-id 5 \
 `canvas_ensure_assignment_groups` 의 결과는 요청한 순서의 `groups:[{id,name,weight}]` 이며,
 계획의 `${cat.<id>.group_id}` 가 그 `id` 를 참조합니다. 실행기는 제목(`title`, `unit_title`)으로 가져온 항목을 찾아 적용합니다. `.imscc` 의 `page` 는
 `wiki_content/` 로 내보내지만 표준 CC importer 가 기능 플래그 없이 `File` 로 둘 수 있으므로,
-post-import 의 `canvas_promote_file_to_page` 가 Page 로 교체합니다. 날짜·토론 점수·성적 그룹/가중치·완료 조건도
+post-import 의 `canvas_promote_file_to_page` 가 Page 로 교체합니다. 날짜·토론 점수·성적 그룹/가중치·완료 조건·단원 공개일도
 같은 보완 단계에서 설정하고, 보완해도 옮길 수 없는 것만 `loss`/`warn` 으로 남깁니다. 단원 `opens_day` 는
-아직 모듈 `unlock_at` 으로 설정하지 않으므로 해당 단원에 `loss` 를 남기고, 가져온 뒤 Canvas 에서 직접
-공개일을 지정해야 합니다.
+`canvas_patch_imported`(`kind: module`)로 모듈 `unlock_at`(설계서 시간대 기준 하루 시작)에 설정합니다.
+
+2026-11-15(Asia/Seoul) 테스트 인스턴스(course_id=2, quiz id=1, module id=4)에서 이 두 보완을 웹 전용으로
+라이브 확인했습니다. 잡은 시작하지 않았고 대구교대 인스턴스는 건드리지 않았습니다. Canvas 는
+14:14:44–14:15:21 KST 가동(`start.sh` 14:15:15 ok, REST 완료 뒤 `stop.sh` 14:15:21 종료)했고 이후
+colima `canvas` 프로필이 Stopped 인 것을 확인했습니다. 재저장 전 GET `/questions` 은 문항 2개
+(points_sum 2.0)를 반환했지만 목록/show API 는 `question_count` 0·`points_possible` null 이었고,
+PUT `{"quiz":{"notify_of_update":false}}` 200 뒤 `question_count` 2·`points_possible` 2.0 으로
+갱신됐습니다(`published` false 유지, 게시 불필요). 2주차 모듈 `unlock_at` 은 null 에서 PUT
+`2027-03-09T00:00:00+09:00`(opens_day 8, start 2027-03-02, Asia/Seoul 하루 시작) 뒤 GET
+`2027-03-08T15:00:00Z`(같은 시각)로 일치했습니다.
 
 ## 파일 내보내기: export → verify
 

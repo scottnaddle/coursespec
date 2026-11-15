@@ -4,7 +4,7 @@
 
 v0.2부터 세 번째 대상 `openmaic` 이 있습니다. LMS가 아니라 설계 시점의 수업 생성 대상이며, 단계는 [integration.md](integration.md)에 있습니다.
 
-검증 상태 — Moodle: moodle-agent-mcp 도구 시그니처와 `local_ubionai` 코드 기준. Canvas: Canvas REST API v1 / New Quizzes API 문서 지식 기준이며, 로컬 Canvas 테스트 인스턴스에서 IMSCC 가져오기와 계획의 `verify=True` 단계를 실행했습니다. 가져오기 결과는 `coursespec verify-lms` 로 오프라인 비교합니다. 이전 exporter 실측: 모듈 제목·토론·과제는 일치, `page` 는 `File`(`w1-reading.html`, `w2-case.html`)로 가져와짐, CC QTI 퀴즈는 모듈·classic quizzes·과제 목록에 없음, 토론은 제목만 있고 점수 없음(CC 토론 리소스에 점수 필드 없음), 성적 카테고리(참여/과제)는 들어오지 않고 Canvas 기본 그룹(`Assignments`, `Imported Assignments`)만 있음. New Quizzes API 가 없는 오픈소스 canvas-lms 인스턴스라 New Quiz 생성·문항 단계는 404(비JSON)로 실패했고, 퀴즈 id 가 없어 문항 단계는 호출하지 못했습니다. 루브릭은 이 데모 계획에 없습니다. 현재 exporter 는 `page` 를 `wiki_content/` 로 내보내고, 가져오기 뒤 남는 차이는 `--post-import` 보완 단계가 REST 로 처리합니다. 2026-11-15(Asia/Seoul) 새 테스트 강좌(course_id=2, 빈 DB) 실서버 검증에서는 `wiki_content/` 페이지 IMSCC 가져오기가 5초에 끝나고 workflow 가 완료됐으며 issues 는 비어 있었습니다. 이어서 `--canvas-quiz classic` post-import 8단계가 모두 통과했고 Canvas 는 14:05:03 KST 에 Stopped 를 확인했습니다. 가져오기 직후에는 이전과 같은 차이가 남았고, post-import 뒤에는 File→Page·토론 점수·과제/퀴즈 due·성적 그룹/가중치·완료 조건·퀴즈 모듈 배치가 일치했습니다. 남은 격차는 아래 실서버 검증·문항 절에 적었습니다.
+검증 상태 — Moodle: moodle-agent-mcp 도구 시그니처와 `local_ubionai` 코드 기준. Canvas: Canvas REST API v1 / New Quizzes API 문서 지식 기준이며, 로컬 Canvas 테스트 인스턴스에서 IMSCC 가져오기와 계획의 `verify=True` 단계를 실행했습니다. 가져오기 결과는 `coursespec verify-lms` 로 오프라인 비교합니다. 이전 exporter 실측: 모듈 제목·토론·과제는 일치, `page` 는 `File`(`w1-reading.html`, `w2-case.html`)로 가져와짐, CC QTI 퀴즈는 모듈·classic quizzes·과제 목록에 없음, 토론은 제목만 있고 점수 없음(CC 토론 리소스에 점수 필드 없음), 성적 카테고리(참여/과제)는 들어오지 않고 Canvas 기본 그룹(`Assignments`, `Imported Assignments`)만 있음. New Quizzes API 가 없는 오픈소스 canvas-lms 인스턴스라 New Quiz 생성·문항 단계는 404(비JSON)로 실패했고, 퀴즈 id 가 없어 문항 단계는 호출하지 못했습니다. 루브릭은 이 데모 계획에 없습니다. 현재 exporter 는 `page` 를 `wiki_content/` 로 내보내고, 가져오기 뒤 남는 차이는 `--post-import` 보완 단계가 REST 로 처리합니다. 2026-11-15(Asia/Seoul) 새 테스트 강좌(course_id=2, 빈 DB) 실서버 검증에서는 `wiki_content/` 페이지 IMSCC 가져오기가 5초에 끝나고 workflow 가 완료됐으며 issues 는 비어 있었습니다. 이어서 `--canvas-quiz classic` post-import 8단계가 모두 통과했고 Canvas 는 14:05:03 KST 에 Stopped 를 확인했습니다. 가져오기 직후에는 이전과 같은 차이가 남았고, post-import 뒤에는 File→Page·토론 점수·과제/퀴즈 due·성적 그룹/가중치·완료 조건·퀴즈 모듈 배치가 일치했습니다. 남은 격차는 아래 실서버 검증·문항 절에 적었고, 같은 날 이어진 라이브 확인(14:14:44–14:15:21 KST)에서 classic 퀴즈 재저장 PUT과 단원 `opens_day`→모듈 `unlock_at` 패치가 일치했습니다.
 
 ## IMS Common Cartridge 1.3 (파일 내보내기)
 
@@ -44,8 +44,12 @@ Canvas 전용 파일(`course_settings/canvas_export.txt` 등)은 만들지 않�
 | 토론 점수 | `canvas_patch_imported` (`kind: discussion`) | 채점 토론의 `points_possible`·과제 그룹·마감 |
 | 활동 날짜 | `canvas_patch_imported` | 활동의 `unlock_at` / `due_at` / `lock_at` |
 | 완료 조건 | `canvas_patch_imported` (`kind: module_item`) | 기존 COMPLETION 매핑으로 모듈 아이템 요구사항 설정 |
-| 퀴즈 | `canvas_create_classic_quiz` 또는 New Quiz 단계 | `--canvas-quiz classic` 또는 `new` (기본 `new`) |
-| 단원 공개일 | — (아직 미지원) | 단원 `opens_day` 는 모듈 `unlock_at` 으로 설정하지 않고 `loss` 로 보고 |
+| 퀴즈 | `canvas_create_classic_quiz` 또는 New Quiz 단계 | `--canvas-quiz classic` 또는 `new` (기본 `new`). Classic 은 문항 POST 뒤 같은 퀴즈를 PUT(`notify_of_update: false`)으로 재저장해 목록의 `question_count`/`points_possible` 갱신을 유도 |
+| 단원 공개일 | `canvas_patch_imported` (`kind: module`) | 단원 `opens_day` 를 모듈 `unlock_at` 으로 설정 (설계서 시간대 기준 하루 시작) |
+
+Classic 퀴즈는 문항을 모두 POST 한 뒤 같은 퀴즈를 PUT(`{"quiz": {"notify_of_update": false}}`)으로
+재저장합니다. Canvas 목록 API 가 재저장 전까지 `question_count` 0·`points_possible` null 을 유지할 수
+있기 때문이며, 게시 상태는 바꾸지 않습니다.
 
 `--post-import` 는 `--course-id` 가 필요합니다. 보완 단계는 실행기가 제목(`title`, `unit_title`)으로
 가져온 항목을 찾아 적용합니다. 보완해도 옮길 수 없는 것(동료 평가의 평가 점수, 용어집의 토론 자동 변환 등)만
@@ -79,16 +83,33 @@ post-import 패치 뒤:
 | 성적 그룹 | 일치 | 참여 20, 과제 80 생성·가중치 적용. 기본 그룹 `Assignments` / `Imported Assignments` 는 잔존 |
 | 완료 조건 | 일치 | must_view / must_contribute / min_score 6 / must_view / must_submit |
 | 퀴즈 모듈 배치 | 일치 | "1주차 확인 퀴즈"가 1주차 모듈에 Quiz 로 배치됨. due·과제 그룹 설정, create API 통과(id=1) |
-| 퀴즈 문항·점수 | 차이/미확인 | list API 에서 `question_count` 0, `points_possible` null, `published` false(생성 시 기본 미게시). 문항 POST 는 오류 없이 통과했으나 Canvas 를 곧바로 종료해 GET `/questions` 로 확인하지 못함. 전체 통과가 아닌 남은 격차로 봄 |
-| 단원 opens_day (2주차 unlock) | 누락 | 2주차 모듈 `unlock_at` 이 여전히 null. post-import 가 모듈 unlock 을 보완하지 않음 |
+| 퀴즈 문항·점수 | 일치 (라이브 확인) | 재저장 전 GET `/questions` 는 문항 2개(1점 multiple_choice_question answers=3, 1점 true_false_question answers=2, points_sum 2.0)를 반환했으나 목록/show API 는 `question_count` 0·`points_possible` null·`published` false 였음. PUT 재저장 200 뒤 show API 는 `question_count` 2·`points_possible` 2.0, `published` false 유지(게시 불필요) |
+| 단원 opens_day (2주차 unlock) | 일치 (라이브 확인) | 2주차 모듈(id=4) `unlock_at` null → PUT `2027-03-09T00:00:00+09:00`(opens_day 8, start 2027-03-02, Asia/Seoul 하루 시작) 200 → GET `2027-03-08T15:00:00Z`(같은 시각), match true |
 | 가져온 HTML 파일 | 잔존 | File 아이템이 Page 로 교체된 뒤에도 `w1-reading.html` / `w2-case.html` 파일이 남음(info, 기능 손실 아님) |
+
+### 재저장·unlock_at 라이브 확인 (2026-11-15, 14:14:44–14:15:21 KST)
+
+같은 테스트 인스턴스(course_id=2, quiz id=1, module id=4)에서 웹 전용으로 두 보완을 다시 확인했습니다.
+잡(job)은 시작하지 않았고 대구교대 인스턴스는 건드리지 않았습니다. Canvas 는 14:14:44–14:15:21 KST
+동안 가동했고(`start.sh` 14:15:15 ok, REST 완료 뒤 `stop.sh` 14:15:21 종료), 이후 colima `canvas`
+프로필이 Stopped 인 것을 확인했습니다.
+
+- classic 퀴즈: 재저장 전에도 GET `/api/v1/courses/2/quizzes/1/questions` 는 문항 2개
+  (문항 1 `multiple_choice_question` 1점 answers=3, 문항 2 `true_false_question` 1점 answers=2,
+  points_sum 2.0)를 반환했습니다. 하지만 목록/show API 는 여전히 `question_count` 0,
+  `points_possible` null, `published` false 였습니다. PUT `/api/v1/courses/2/quizzes/1`
+  `{"quiz":{"notify_of_update":false}}` 가 200 을 반환한 뒤 show API 는 `question_count` 2,
+  `points_possible` 2.0 으로 갱신됐고 `published` 는 false 로 유지됐습니다. 게시는 필요 없었습니다.
+- 단원 공개일: 2주차 모듈(id=4, "2주차 — 사례 분석과 실천 원칙")의 `unlock_at` 은 null 이었습니다.
+  PUT `unlock_at=2027-03-09T00:00:00+09:00`(opens_day 8, start 2027-03-02, Asia/Seoul 하루 시작)이
+  200 을 반환했고, GET 은 `2027-03-08T15:00:00Z`(같은 시각)를 반환했습니다. match true.
 
 남은 손실·격차:
 
 - CC QTI 퀴즈는 QTI 도구가 없는 인스턴스라 가져오기에서 계속 빠집니다.
 - 표준 CC 가져오기는 페이지를 여전히 `File` 로 저장하며, REST promote 가 이를 교체합니다.
-- classic 퀴즈 문항 수·점수는 목록 스냅샷에서 확인되지 않았습니다(`question_count 0`).
-- 단원 `opens_day` / 모듈 `unlock_at` 은 아직 보완하지 않습니다.
+- classic 퀴즈 문항 수·점수는 재저장 PUT 뒤 목록/show API 에서 `question_count` 2·`points_possible` 2.0 으로 확인했습니다(2026-11-15 라이브). `published` 는 false 로 유지되며 게시가 필요 없었습니다.
+- 단원 `opens_day` / 모듈 `unlock_at` 은 2주차 모듈(id=4)에서 PUT 뒤 GET 이 같은 시각(`2027-03-08T15:00:00Z`)을 반환해 일치했습니다.
 - New Quizzes 는 이 인스턴스에서 여전히 404 입니다(예상된 한계).
 - 가져온 HTML 파일(`w1-reading.html`, `w2-case.html`)이 남습니다(info, 기능 손실 아님).
 - Canvas 기본 과제 그룹(`Assignments`, `Imported Assignments`)이 `참여`/`과제` 와 함께 남습니다.

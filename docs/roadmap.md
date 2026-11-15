@@ -33,8 +33,9 @@
 - [x] IMSCC exporter 의 `page` 를 `wiki_content/` 완전한 HTML 문서로 내보내 Canvas 카트리지 importer 경로에 맞춤
 - [x] Canvas `--post-import`: 가져온 강좌를 제목으로 찾아 `File→Page`, 토론 점수·날짜·성적 그룹/가중치·완료 조건을 REST 계획으로 보완
 - [x] Canvas `--canvas-quiz classic`: Classic Quiz REST 로 퀴즈·문항 생성 (기본값 `new` 는 New Quizzes 경로 유지)
+- [x] Canvas `--post-import`: 단원 `opens_day` → 모듈 `unlock_at` (`canvas_patch_imported` `kind: module`), classic 퀴즈 문항 뒤 재저장 PUT
 - [x] 오픈소스/테스트 Canvas 에서 `--canvas-quiz classic` + `--post-import` 실행 검증 (2026-11-15, 새 테스트 강좌 course_id=2, 8단계 통과)
-  - 남은 격차: classic 퀴즈 문항 수/점수가 목록 스냅샷에서 `question_count 0`·`points_possible null` 로 확인되지 않았고(문항 POST 는 오류 없이 통과, Canvas 종료 직후라 GET 미확인), 단원 `opens_day` 의 모듈 `unlock_at` 은 아직 보완하지 않음
+  - 같은 날 14:14:44–14:15:21 KST 라이브 확인: classic 퀴즈는 재저장 전 GET `/questions` 이 문항 2개(points_sum 2.0)를 반환했고 PUT 재저장 뒤 show API 가 `question_count 2`·`points_possible 2.0`(`published` false 유지, 게시 불필요). 단원 `opens_day`→모듈 `unlock_at` 은 2주차 모듈(id=4) PUT 뒤 GET 이 같은 시각(`2027-03-08T15:00:00Z`)으로 match true. 웹 전용, 잡 미시작, 대구교대 미접촉
 - [ ] 허브에 실행기(apply) 탑재: 계획 미리보기 → 일괄 승인 → 실행 → 배포 기록
 - [ ] moodle-agent-mcp 보강 제안 반영 ([publishing.md](publishing.md))
 
