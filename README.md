@@ -154,3 +154,7 @@ cd web && npm test && npm run lint && npm run typecheck && npm run build
 - [moodle-local_ubionai](https://github.com/scottnaddle/moodle-local_ubionai) — MCP가 의존하는 Moodle 로컬 플러그인
 - [THU-MAIC/OpenMAIC](https://github.com/THU-MAIC/OpenMAIC) — 멀티에이전트 인터랙티브 수업 생성 (수업 생성 대상)
 - [HKUDS/DeepTutor](https://github.com/HKUDS/DeepTutor) — 학습자 튜터 (튜터 팩의 대상)
+
+## 라이선스
+
+이 프로젝트는 MIT 라이선스로 배포됩니다. 자세한 내용은 [LICENSE](LICENSE)를 보세요.
