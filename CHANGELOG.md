@@ -20,6 +20,14 @@
 - OpenMAIC 강의 성적 처리 수정: 성적 설정이 없으면 grade 0으로 만들고 경고, 범주 없는 성적은 미분류 항목이 됨을 경고. 예시 w4 강의의 불필요한 100점 항목 제거
 - `coursespec verify-lms SPEC --target canvas --snapshot FILE [--verify-steps FILE] [--json]`: 실행기가 읽어 둔 Canvas REST 스냅샷과 REST plan verify 단계 결과를 설계서와 오프라인 비교. 모듈·페이지·토론·과제·퀴즈별 `일치`/`누락`/`차이`, 표준 CC 한계 보고, 절대 URL verify 단계 거절, 종료 코드 0/1/2
 - 로컬 Canvas 테스트 인스턴스 IMSCC 가져오기 실측: 모듈 제목·토론·과제 일치, `page`는 `File`(`w1-reading.html`, `w2-case.html`), CC QTI 퀴즈 누락, 토론 점수 없음, 성적 카테고리 미반영. New Quizzes API 부재로 REST plan verify 단계는 404(비JSON)
+- 교수용 웹 UI (M1, `src/coursespec/web/` + `web/`): FastAPI 백엔드가 `coursespec` 패키지를 감싸고, Vite + React + TypeScript 프론트. 목업 01·02(새 과정 시작·강의계획서 초안 검토)와 앱 셸(사이드바·상단바) 구현
+- 실라버스 초안 생성: 과목 이름(필수)＋목표·자료(선택)로 제목·소개·학습목표·주차·평가·제안 JSON 초안. 키·주소는 환경변수 경로만(`COURSESPEC_LLM_KEY_PATH` 등), 값은 로그·응답에 남기지 않음. `COURSESPEC_LLM_STUB=1` 또는 호출 객체 주입으로 네트워크 없이 결정적 스텁 초안(자료 키워드 예: “윤리”가 주차·제안에 반영)
+- 자료 텍스트 추출: txt/md(UTF-8), PDF(pypdf), DOCX(python-docx), HWPX(내부 XML). 구형 HWP 바이너리는 쉬운 한국어 오류로 안내. 파일별 실패를 보고하고 과목 이름만으로도 초안 생성 계속
+- HTTP API: `GET /api/health`, `POST /api/drafts`(multipart), `GET/PATCH /api/drafts/{id}`, `regenerate`, `suggestions/{sid}/accept·skip`(수락 시에만 본문 반영), `handoff`(설계 에이전트용 강의계획서 텍스트, 설계서 생성·LMS 호출 없음). 오류는 한국어 `message`로 원인·다음 행동 안내, 과목 이름 없음은 4xx
+- 과정 초안은 서버 쪽 작업 공간(`COURSESPEC_WEB_WORKSPACE`, 없으면 `var/workspace`, gitignore)에 YAML 로 저장하되 화면·API 는 구조화 JSON 만. 기본 화면에 YAML·JSON Patch·도구 이름을 보여 주지 않음
+- 로그 적색: 토큰·Bearer·API 키, 쿼리스트링 key, 자격증명이 박힌 URL 을 로그에서 감춤 (`src/coursespec/web/redact.py`)
+- 의존성: optional extra `web`(fastapi, uvicorn, python-multipart, pypdf, python-docx, httpx) 추가. 기본 설치 부풀리지 않고 CI 는 `pip install -e ".[test,web]"` 로 최소 수정
+- 프론트 테스트(Vitest + Testing Library)와 백엔드 웹 테스트(`tests/test_web_*.py`) 추가: 기존 71개 유지 + 신규 테스트
 
 ## 0.2.1
 - `coursespec export SPEC --format imscc`: IMS Common Cartridge 1.3 ZIP 내보내기 (네트워크 호출 없음)

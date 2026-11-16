@@ -15,3 +15,11 @@
 - CC 에 없는 기능은 `ExportResult.conversions` 에 `info`/`warn`/`loss` 로 남기세요. 조용히 버리지 않습니다.
 - 과정 설계 스킬은 `skills/design-agent/SKILL.md` 입니다. 초안은 lint 루프로 다듬고, 저장 후 수정은 반드시 `coursespec patch` 로만 합니다.
 - 확인: `pytest -q` 와 `coursespec lint examples/ai-agent-education.coursespec.yaml examples/design-agent-demo/course.coursespec.yaml`.
+
+## 교수용 웹 UI (`src/coursespec/web/`, `web/`)
+
+- 실제 LMS 실행(Moodle/Canvas/오픈마익 apply)은 웹 UI에서 교수자가 승인한 뒤에만 하며, 퍼블리셔는 계획만 만들고 네트워크를 호출하지 않는다는 기존 원칙과 같습니다. M1 은 실라버스 초안 생성만 하고 실행 기능이 없습니다.
+- UI 문구는 한국어이고, 개발 지식이 없는 교수를 기준으로 합니다. 기본 화면에 YAML·JSON Patch·도구 이름을 보여 주지 않습니다.
+- 접근성을 지킵니다: 모든 입력에 label, 버튼·제거에 접근 가능한 이름(`aria-label`), 키보드로 주요 동작 가능, 오류는 텍스트로 전달합니다.
+- 프론트 테스트(`web/`의 Vitest + Testing Library)와 백엔드 테스트(`tests/test_web_*.py`)를 추가·유지합니다. 프론트는 `npm run lint`·`npm run typecheck`·`npm test` 를 통과해야 합니다.
+- **초안 생성 LLM 호출 범위:** 실라버스 필드(제목, 소개, 학습목표, 주차, 평가, 제안)를 만드는 일에만 씁니다. 키는 `COURSESPEC_LLM_KEY_PATH` 같은 경로로만 읽고 값을 로그·커밋·응답에 남기지 않습니다. LMS 실행이나 설계서 배포에는 쓰지 않습니다. 테스트·로컬 데모는 `COURSESPEC_LLM_STUB=1`(또는 호출 객체 주입)로 네트워크 없이 돌립니다.
