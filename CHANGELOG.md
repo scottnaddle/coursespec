@@ -1,5 +1,14 @@
 # 변경 내역
 
+## Unreleased
+- 교수용 웹 UI M2 — 화면 03 「과정 지도」: 초안 인계 → 설계 에이전트가 CourseSpec 설계서를 생성(스텁은 네트워크 없이 결정적, 스키마·린트 오류 0) → 주차·학습목표·평가 비중·활동을 한국어 카드로 확인
+- 설계서 → 화면 모델 API(`GET /api/designs/{id}` 등): 요약 칩(주차 수·학습목표 수·평가 비중·주당 최대 학습시간), 학습목표 카드(블룸 수준 한국어), 주차 카드(활동 유형 한국어 배지·분·N일차 마감), 린트 결과는 코드 없는 쉬운 한국어 notice(오류/경고·위치 라벨). 린트 0 예시에서는 배너가 뜨지 않음
+- 설계서 편집(`POST /api/designs/{id}/edits`): 주차 제목·요약, 활동 제목·분·마감 수정과 활동 추가·삭제·이동은 서버가 `test`+`replace`/`add`/`remove` JSON Patch 로 변환해 `coursespec patch`(`apply_ops`/`patch_file`)로 검증 적용. 스키마·린트 오류 시 4xx 쉬운 한국어 안내와 파일 불변, YAML 주석 보존
+- “수정 요청”(`change-requests`): 자유 문장 → 설계 에이전트(스텁/실모델)가 검증 패치 생성 → 변경 요약 미리 보기(패치 원문 미노출) → 적용/취소. 적용은 저장해 둔 패치를 다시 검증(그사이 바뀌면 쉬운 안내), 못 알아들은 문장은 400 안내
+- “이 설계로 확정”(`confirm`): 린트 오류 0일 때만 확정 상태 저장. plan/export/LMS 호출 없음
+- 예시 과정 열기(`POST /api/designs/example`): `examples/` 원본을 바꾸지 않는 작업 공간 복사본으로 열기
+- 설계 에이전트 LLM 호출 범위: 설계서 생성·수정 요청 해석에만. 실모델 경로는 M1 초안과 같은 방식(키·주소 경로만, `COURSESPEC_LLM_STUB=1` 또는 호출 주입으로 네트워크 없이 테스트)
+
 ## 0.3.0
 - IMSCC exporter: `page` 를 완전한 HTML 문서(`charset`·`<title>`·meta identifier)로 `wiki_content/<id>.html` 에 내보냄. `file`·`wiki`·`glossary`·강의 HTML 경로는 그대로
 - Canvas `--post-import`: 기존 `--course-id` 강좌를 제목으로 찾아 강좌·모듈·활동을 다시 만들지 않고 `canvas_ensure_assignment_groups`·`canvas_patch_imported`·`canvas_promote_file_to_page`·`canvas_create_classic_quiz` 단계로 점수·날짜·가중치·완료 조건·File→Page 를 보완. `--course-id` 없이는 종료 코드 2
