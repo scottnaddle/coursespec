@@ -286,9 +286,32 @@ def _find_item(unit: dict, title: str) -> tuple[int, dict]:
     )
 
 
-def _new_item_id(unit: dict, item_type: str) -> str:
+def _all_ids(data: dict) -> set:
+    """린트 E001 이 보는 이름공간 그대로 — 설계서 전체의 모든 id.
+
+    단원·활동·학습목표·평가 카테고리·배지·자료 id 는 같은 이름공간이라
+    어느 한 곳에라도 쓰인 id 는 다른 곳에서 쓸 수 없다.
+    """
+    ids = set()
+    for unit in data.get("units") or []:
+        ids.add(str(unit.get("id")))
+        for it in unit.get("items") or []:
+            ids.add(str(it.get("id")))
+    for outcome in data.get("outcomes") or []:
+        ids.add(str(outcome.get("id")))
+    grading = data.get("grading") or {}
+    for category in grading.get("categories") or []:
+        ids.add(str(category.get("id")))
+    for badge in data.get("badges") or []:
+        ids.add(str(badge.get("id")))
+    for material in data.get("materials") or []:
+        ids.add(str(material.get("id")))
+    return ids
+
+
+def _new_item_id(data: dict, unit: dict, item_type: str) -> str:
     base = f"{unit['id']}-{item_type.replace('_', '')}"
-    existing = {it.get("id") for it in unit.get("items") or []}
+    existing = _all_ids(data)
     if base not in existing:
         return base
     n = 2
@@ -297,10 +320,10 @@ def _new_item_id(unit: dict, item_type: str) -> str:
     return f"{base}{n}"
 
 
-def _minimal_item(unit: dict, kind: str, title: str, minutes: int) -> dict:
+def _minimal_item(data: dict, unit: dict, kind: str, title: str, minutes: int) -> dict:
     item_type = KIND_TO_TYPE.get(kind, "page")
     item: dict[str, Any] = {
-        "id": _new_item_id(unit, item_type),
+        "id": _new_item_id(data, unit, item_type),
         "type": item_type,
         "title": title.strip() or f"새 {kind}",
         "estimated_minutes": minutes,
@@ -365,7 +388,7 @@ def stub_change_request(text: str, data: dict, path: Any) -> tuple[list[dict], l
     if match:
         week_no, kind, title = int(match.group(1)), match.group(2), match.group(3) or ""
         ui, unit = _unit_at(data, week_no)
-        item = _minimal_item(unit, kind, title, 30)
+        item = _minimal_item(data, unit, kind, title, 30)
         ops = [
             {"op": "test", "path": f"/units/{ui}/id", "value": unit.get("id")},
             {"op": "add", "path": f"/units/{ui}/items/-", "value": item},

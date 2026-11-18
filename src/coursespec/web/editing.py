@@ -121,8 +121,8 @@ def _add_item_ops(data: dict, action: dict[str, Any]) -> list[dict[str, Any]]:
     minutes = int(action.get("minutes") or 30)
     if minutes < 0:
         raise WebError("소요 시간은 0분 이상이어야 합니다.", status=422)
-    # 현재 문서 기준으로 id 를 정해, 같은 유형을 여러 번 추가해도 id 가 겹치지 않는다.
-    item = _minimal_item(unit, label, title, minutes)
+    # 설계서 전체 이름공간 기준으로 id 를 정해, 다른 주차로 옮긴 활동과도 겹치지 않는다.
+    item = _minimal_item(data, unit, label, title, minutes)
     return [
         _id_test(f"/units/{ui}", unit.get("id")),
         {"op": "add", "path": f"/units/{ui}/items/-", "value": item},
@@ -186,12 +186,8 @@ def apply_edits(path: Any, data: dict, actions: list[dict[str, Any]]) -> list:
     try:
         return patch_file(path, ops)
     except PatchError as exc:
-        joined = " ".join(exc.errors)
-        if "E001" in joined:
-            raise WebError(
-                "같은 이름을 쓰는 활동이 이미 있습니다. 추가한 활동의 이름을 다르게 지어 주세요.",
-                status=409,
-            ) from None
+        # 남은 id 충돌(E001)은 교수가 고칠 수 있는 제목 문제가 아니므로
+        # "다시 시도해 주세요" 안내로 돌린다.
         if exc.errors:
             raise WebError(
                 "고친 내용을 적용하면 설계서에 문제가 생깁니다. "

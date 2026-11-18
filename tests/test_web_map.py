@@ -169,6 +169,67 @@ def test_add_remove_move_items(client, example_id):
     assert not any(i["title"] == "시나리오 나누기" for i in data["units"][3]["items"])
 
 
+def test_add_after_move_gets_course_wide_unique_id(client, example_id):
+    """다른 주차로 옮긴 활동과 id 가 겹치지 않는다(린트 E001 이름공간은 과정 전체)."""
+    moved = client.post(
+        f"/api/designs/{example_id}/edits",
+        json={"actions": [
+            {"action": "update_item", "unit_id": "w1", "item_id": "w1-quiz", "due_day": 13},
+            {"action": "move_item", "unit_id": "w1", "item_id": "w1-quiz",
+             "to_unit_id": "w2"},
+        ]},
+    )
+    assert moved.status_code == 200, moved.text
+
+    added = client.post(
+        f"/api/designs/{example_id}/edits",
+        json={"actions": [{"action": "add_item", "unit_id": "w1", "kind": "퀴즈",
+                           "title": "복습 퀴즈", "minutes": 10}]},
+    )
+    assert added.status_code == 200, added.text
+    data = yaml.safe_load(_design_path(example_id).read_text("utf-8"))
+    quiz_ids = [i["id"] for u in data["units"] for i in u.get("items", [])
+                if i.get("type") == "quiz"]
+    assert len(quiz_ids) == len(set(quiz_ids))
+    assert "w1-quiz2" in quiz_ids  # 옮겨 간 w1-quiz 와 겹치지 않는 새 id
+
+
+def test_change_request_add_after_move_gets_course_wide_unique_id(client, example_id):
+    moved = client.post(
+        f"/api/designs/{example_id}/edits",
+        json={"actions": [
+            {"action": "update_item", "unit_id": "w1", "item_id": "w1-quiz", "due_day": 13},
+            {"action": "move_item", "unit_id": "w1", "item_id": "w1-quiz",
+             "to_unit_id": "w2"},
+        ]},
+    )
+    assert moved.status_code == 200, moved.text
+
+    preview = client.post(
+        f"/api/designs/{example_id}/change-requests",
+        json={"text": "1주차에 퀴즈 추가"},
+    )
+    assert preview.status_code == 200, preview.text
+    applied = client.post(
+        f"/api/designs/{example_id}/change-requests/{preview.json()['request_id']}/apply"
+    )
+    assert applied.status_code == 200, applied.text
+    data = yaml.safe_load(_design_path(example_id).read_text("utf-8"))
+    quiz_ids = [i["id"] for u in data["units"] for i in u.get("items", [])
+                if i.get("type") == "quiz"]
+    assert len(quiz_ids) == len(set(quiz_ids))
+
+
+def test_design_id_rejects_trailing_newline():
+    """id 검사는 끝의 개행 문자까지 거부한다(re.fullmatch)."""
+    from coursespec.web.errors import WebError
+    from coursespec.web.storage import _safe_id
+
+    with pytest.raises(WebError):
+        _safe_id("abc\n")
+    assert _safe_id("abc") == "abc"
+
+
 def test_removing_required_item_fails_and_file_is_unchanged(client, example_id):
     path = _design_path(example_id)
     before = path.read_bytes()

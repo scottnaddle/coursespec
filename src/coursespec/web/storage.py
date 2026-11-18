@@ -38,7 +38,7 @@ def workspace_dir() -> Path:
 
 
 def _safe_id(design_id: str) -> str:
-    if not design_id or not _ID_RE.match(design_id):
+    if not design_id or not _ID_RE.fullmatch(design_id):
         raise WebError("설계서를 찾지 못했습니다. 다시 열어 주세요.", status=404)
     return design_id
 
