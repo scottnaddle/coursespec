@@ -13,7 +13,8 @@ interface ScreenCourseMapProps {
   onChange: (map: CourseMap) => void
 }
 
-const ADDABLE_KINDS = ['읽기', '자료', '퀴즈', '토론', '과제', '설문', '동료평가']
+// 파일 없이 가짜 경로를 넣을 수밖에 없는 '자료' 추가는 지원하지 않는다.
+const ADDABLE_KINDS = ['읽기', '퀴즈', '토론', '과제', '설문', '동료평가']
 
 interface ItemDraft {
   id: string
@@ -94,13 +95,13 @@ export function ScreenCourseMap({ map, onChange }: ScreenCourseMapProps) {
     setError(null)
     try {
       const actions: EditAction[] = []
+      // 화면에는 "N주차 —" 접두어를 뗀 제목을 보여 주므로, 바뀐 필드만 본낸다.
+      // (제목이 안 바뀌었는데 다시 본낸면 접두어가 사라진다.)
       if (draft.title !== unit.title || draft.summary !== unit.summary) {
-        actions.push({
-          action: 'update_unit',
-          unit_id: unit.id,
-          title: draft.title,
-          summary: draft.summary,
-        })
+        const action: EditAction = { action: 'update_unit', unit_id: unit.id }
+        if (draft.title !== unit.title) action.title = draft.title
+        if (draft.summary !== unit.summary) action.summary = draft.summary
+        actions.push(action)
       }
       for (const item of draft.items) {
         const original = unit.items.find((it) => it.id === item.id)
@@ -120,19 +121,21 @@ export function ScreenCourseMap({ map, onChange }: ScreenCourseMapProps) {
         }
         const minutes = Number(item.minutes) || 0
         const due = item.dueDay.trim() === '' ? null : Number(item.dueDay)
+        // 바뀐 필드만 본낸다. 그래야 값이 없던 필드(요약·마감일)를 고칠 때도 안전하다.
         if (
           item.title !== original.title ||
           minutes !== original.minutes ||
           due !== original.due_day
         ) {
-          actions.push({
+          const action: EditAction = {
             action: 'update_item',
             unit_id: unit.id,
             item_id: item.id,
-            title: item.title,
-            minutes,
-            due_day: due,
-          })
+          }
+          if (item.title !== original.title) action.title = item.title
+          if (minutes !== original.minutes) action.minutes = minutes
+          if (due !== original.due_day) action.due_day = due
+          actions.push(action)
         }
       }
       for (const add of draft.adds) {

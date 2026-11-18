@@ -165,6 +165,50 @@ describe('ScreenCourseMap', () => {
     )
   })
 
+  it('요약만 고쳐도 제목은 다시 본내지 않는다', async () => {
+    mockSubmitEdits.mockResolvedValue(baseMap)
+    renderScreen()
+
+    await userEvent.click(screen.getAllByRole('button', { name: '이 주차 편집' })[0])
+    const summaryInput = screen.getByLabelText('주차 요약')
+    await userEvent.clear(summaryInput)
+    await userEvent.type(summaryInput, '바꾼 요약')
+    await userEvent.click(screen.getByRole('button', { name: '저장' }))
+
+    await waitFor(() => expect(mockSubmitEdits).toHaveBeenCalledTimes(1))
+    const [, actions] = mockSubmitEdits.mock.calls[0]
+    expect(actions).toEqual([
+      { action: 'update_unit', unit_id: 'w1', summary: '바꾼 요약' },
+    ])
+  })
+
+  it('활동 마감일만 고치면 바뀐 필드만 본낸다', async () => {
+    mockSubmitEdits.mockResolvedValue(baseMap)
+    renderScreen()
+
+    await userEvent.click(screen.getAllByRole('button', { name: '이 주차 편집' })[0])
+    const dueInput = screen.getAllByLabelText('1주차 활동 마감일(비우면 없음)')[1]
+    await userEvent.clear(dueInput)
+    await userEvent.type(dueInput, '9')
+    await userEvent.click(screen.getByRole('button', { name: '저장' }))
+
+    await waitFor(() => expect(mockSubmitEdits).toHaveBeenCalledTimes(1))
+    const [, actions] = mockSubmitEdits.mock.calls[0]
+    expect(actions).toEqual([
+      { action: 'update_item', unit_id: 'w1', item_id: 'w1-quiz', due_day: 9 },
+    ])
+  })
+
+  it('활동 제목·분이 그대로면 본내지 않는다', async () => {
+    mockSubmitEdits.mockResolvedValue(baseMap)
+    renderScreen()
+
+    // 편집을 열고 아무것도 고치지 않고 저장하면 요청이 없다
+    await userEvent.click(screen.getAllByRole('button', { name: '이 주차 편집' })[0])
+    await userEvent.click(screen.getByRole('button', { name: '저장' }))
+    expect(mockSubmitEdits).not.toHaveBeenCalled()
+  })
+
   it('수정 요청은 미리 보기를 거쳐 적용한다', async () => {
     mockRequestChange.mockResolvedValue({
       request_id: 'r1',
