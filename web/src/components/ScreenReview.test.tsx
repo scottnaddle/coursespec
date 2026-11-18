@@ -1,13 +1,14 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { acceptSuggestion, handoff, skipSuggestion, updateDraft } from '../api'
+import { acceptSuggestion, createDesign, handoff, skipSuggestion, updateDraft } from '../api'
 import type { Draft } from '../types'
 import { ScreenReview } from './ScreenReview'
 
 vi.mock('../api', () => ({
   updateDraft: vi.fn(),
   handoff: vi.fn(),
+  createDesign: vi.fn(),
   acceptSuggestion: vi.fn(),
   skipSuggestion: vi.fn(),
   regenerateDraft: vi.fn(),
@@ -15,6 +16,7 @@ vi.mock('../api', () => ({
 
 const mockUpdateDraft = vi.mocked(updateDraft)
 const mockHandoff = vi.mocked(handoff)
+const mockCreateDesign = vi.mocked(createDesign)
 const mockAcceptSuggestion = vi.mocked(acceptSuggestion)
 const mockSkipSuggestion = vi.mocked(skipSuggestion)
 
@@ -40,11 +42,27 @@ describe('ScreenReview', () => {
     vi.clearAllMocks()
   })
 
-  it('편집한 제목이 저장과 인계에 그대로 반영된다', async () => {
+  it('편집한 제목이 저장·인계에 그대로 반영되고 과정 지도로 넘어간다', async () => {
     mockUpdateDraft.mockResolvedValue({ ...draft, title: '고친 제목' })
     mockHandoff.mockResolvedValue({ text: '# 고친 제목\n' })
+    mockCreateDesign.mockResolvedValue({
+      design_id: 'g1',
+      map: {
+        design_id: 'g1',
+        title: '고친 제목',
+        confirmed: false,
+        can_confirm: true,
+        summary: { unit_count: 1, outcome_count: 1, grading: '과제 100%', max_per_unit_label: '4시간' },
+        outcomes: [],
+        units: [],
+        notices: [],
+      },
+    })
     const onUpdated = vi.fn()
-    render(<ScreenReview draft={draft} onUpdated={onUpdated} onStartNew={vi.fn()} />)
+    const onDesigned = vi.fn()
+    render(
+      <ScreenReview draft={draft} onUpdated={onUpdated} onStartNew={vi.fn()} onDesigned={onDesigned} />,
+    )
 
     const titleInput = screen.getByLabelText('과정 이름')
     await userEvent.clear(titleInput)
@@ -59,10 +77,21 @@ describe('ScreenReview', () => {
       ),
     )
     await waitFor(() => expect(mockHandoff).toHaveBeenCalledWith('d1'))
+    await waitFor(() =>
+      expect(mockCreateDesign).toHaveBeenCalledWith('d1'),
+    )
+    await waitFor(() => expect(onDesigned).toHaveBeenCalledWith(expect.objectContaining({ design_id: 'g1' })))
   })
 
   it('제안은 수락 전에 본문을 바꾸지 않는다', () => {
-    render(<ScreenReview draft={draft} onUpdated={vi.fn()} onStartNew={vi.fn()} />)
+    render(
+      <ScreenReview
+        draft={draft}
+        onUpdated={vi.fn()}
+        onStartNew={vi.fn()}
+        onDesigned={vi.fn()}
+      />,
+    )
 
     expect(screen.getByLabelText('1주차 제목')).toHaveValue('1주차 주제')
     expect(mockAcceptSuggestion).not.toHaveBeenCalled()
@@ -75,7 +104,9 @@ describe('ScreenReview', () => {
       suggestions: [{ ...draft.suggestions[0], status: 'accepted' }],
     })
     const onUpdated = vi.fn()
-    render(<ScreenReview draft={draft} onUpdated={onUpdated} onStartNew={vi.fn()} />)
+    render(
+      <ScreenReview draft={draft} onUpdated={onUpdated} onStartNew={vi.fn()} onDesigned={vi.fn()} />,
+    )
 
     await userEvent.click(screen.getByRole('button', { name: '넣기' }))
 
@@ -88,7 +119,9 @@ describe('ScreenReview', () => {
       ...draft,
       suggestions: [{ ...draft.suggestions[0], status: 'skipped' }],
     })
-    render(<ScreenReview draft={draft} onUpdated={vi.fn()} onStartNew={vi.fn()} />)
+    render(
+      <ScreenReview draft={draft} onUpdated={vi.fn()} onStartNew={vi.fn()} onDesigned={vi.fn()} />,
+    )
 
     await userEvent.click(screen.getByRole('button', { name: '건너뛰기' }))
 

@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react'
 import {
   acceptSuggestion,
+  createDesign,
   handoff,
   regenerateDraft,
   skipSuggestion,
   updateDraft,
 } from '../api'
-import type { Draft, GradingItem, Week } from '../types'
+import type { CourseMap, Draft, GradingItem, Week } from '../types'
 
 interface ScreenReviewProps {
   draft: Draft
   onUpdated: (draft: Draft) => void
   onStartNew: () => void
+  onDesigned: (map: CourseMap) => void
 }
 
 interface Editable {
@@ -32,12 +34,12 @@ function toEditable(draft: Draft): Editable {
   }
 }
 
-export function ScreenReview({ draft, onUpdated, onStartNew }: ScreenReviewProps) {
+export function ScreenReview({ draft, onUpdated, onStartNew, onDesigned }: ScreenReviewProps) {
   const [form, setForm] = useState<Editable>(() => toEditable(draft))
   const [saving, setSaving] = useState(false)
+  const [designing, setDesigning] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
-  const [handoffText, setHandoffText] = useState<string | null>(null)
 
   // 서버 응답(저장·제안 수락·다시 만들기)이 오면 화면을 그 결과로 맞춘다.
   useEffect(() => {
@@ -121,14 +123,18 @@ export function ScreenReview({ draft, onUpdated, onStartNew }: ScreenReviewProps
   async function handleHandoff() {
     setError(null)
     setNotice(null)
+    setDesigning(true)
     try {
       const saved = await save()
       if (!saved) return
-      const result = await handoff(draft.id)
-      setHandoffText(result.text)
-      setNotice('설계 에이전트에 넘길 초안이 준비되었습니다.')
+      // 인계 텍스트를 준비한 뒤 설계 에이전트에 넘겨 과정 지도(설계서)를 만든다.
+      await handoff(draft.id)
+      const { map } = await createDesign(draft.id)
+      onDesigned(map)
     } catch (err) {
       setError(err instanceof Error ? err.message : '과정 설계로 넘기지 못했습니다.')
+    } finally {
+      setDesigning(false)
     }
   }
 
@@ -168,8 +174,13 @@ export function ScreenReview({ draft, onUpdated, onStartNew }: ScreenReviewProps
           <button className="btn btn-ghost" type="button" onClick={handleRegenerate}>
             초안 다시 만들기
           </button>
-          <button className="btn btn-primary" type="button" onClick={handleHandoff}>
-            이 초안으로 과정 설계하기
+          <button
+            className="btn btn-primary"
+            type="button"
+            onClick={handleHandoff}
+            disabled={designing}
+          >
+            {designing ? '설계하는 중…' : '이 초안으로 과정 설계하기'}
           </button>
         </div>
       </div>
@@ -364,19 +375,6 @@ export function ScreenReview({ draft, onUpdated, onStartNew }: ScreenReviewProps
               </div>
             ))}
           </div>
-
-          {handoffText !== null && (
-            <div className="panel" style={{ padding: 14 }}>
-              <details>
-                <summary className="linkish" style={{ cursor: 'pointer' }}>
-                  설계 에이전트에 넘길 텍스트 확인
-                </summary>
-                <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12, marginTop: 8, color: 'var(--sub)' }}>
-                  {handoffText}
-                </pre>
-              </details>
-            </div>
-          )}
 
           <button className="btn btn-ghost" type="button" onClick={onStartNew}>
             새 과정 다시 시작하기

@@ -1,4 +1,4 @@
-export type View = 'start' | 'review' | 'placeholder'
+export type View = 'start' | 'review' | 'map' | 'placeholder'
 
 interface SidebarProps {
   view: View
@@ -7,7 +7,6 @@ interface SidebarProps {
 }
 
 const PLACEHOLDER_ITEMS: { view: View; label: string; note: string }[] = [
-  { view: 'placeholder', label: '과정 지도', note: '다음 단계에서 제공' },
   { view: 'placeholder', label: '오픈마익 수업', note: '다음 단계에서 제공' },
   { view: 'placeholder', label: 'LMS로 내보내기', note: '다음 단계에서 제공' },
   { view: 'placeholder', label: '변경 검토', note: '다음 단계에서 제공' },
@@ -40,6 +39,13 @@ export function Sidebar({ view, courseName, onNavigate }: SidebarProps) {
         >
           <span aria-hidden="true">✎</span>
           <span>강의계획서 초안</span>
+        </button>
+        <button
+          className={view === 'map' ? 'active' : ''}
+          onClick={() => onNavigate('map')}
+        >
+          <span aria-hidden="true">▦</span>
+          <span>과정 지도</span>
         </button>
         {PLACEHOLDER_ITEMS.map((item) => (
           <button key={item.label} onClick={() => onNavigate(item.view, item.label)}>
