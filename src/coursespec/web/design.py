@@ -48,9 +48,9 @@ _DEFAULT_GRADING = [
 _LEVELS = ["understand", "apply", "analyze", "evaluate", "create"]
 
 # 화면에서 쓰는 한국어 활동 유형 ↔ 스펙 type
+# '자료' 는 뺀다: 파일 업로드 없이 가짜 경로를 넣을 수밖에 없어서, 추가 자체를 지원하지 않는다.
 KIND_TO_TYPE = {
     "읽기": "page",
-    "자료": "file",
     "퀴즈": "quiz",
     "토론": "discussion",
     "과제": "assignment",
@@ -255,7 +255,7 @@ _CHANGE_TITLE = re.compile(
     r"(\d{1,2})\s*주차\s*제목을\s*['\"‘“]?(.+?)['\"’”]?\s*로\s*바꿔"
 )
 _CHANGE_ADD = re.compile(
-    r"(\d{1,2})\s*주차에\s*(읽기|자료|퀴즈|토론|과제|설문|동료평가|수업)\s*"
+    r"(\d{1,2})\s*주차에\s*(읽기|퀴즈|토론|과제|설문|동료평가|수업)\s*"
     r"(?:['\"‘“](.+?)['\"’”])?\s*추가"
 )
 _CHANGE_REMOVE = re.compile(
@@ -308,8 +308,6 @@ def _minimal_item(unit: dict, kind: str, title: str, minutes: int) -> dict:
     if item_type == "page":
         item["content"] = f"{item['title']}의 내용을 정리해 주세요."
         item["completion"] = {"mode": "view"}
-    elif item_type == "file":
-        item["source"] = "materials/new-file.pdf"
     elif item_type == "quiz":
         item["quiz"] = {"time_limit_minutes": minutes, "attempts": 1}
         item["completion"] = {"mode": "pass", "pass_grade": 1}
@@ -332,10 +330,23 @@ def _minimal_item(unit: dict, kind: str, title: str, minutes: int) -> dict:
     return item
 
 
+def _dry_run_checked(path: Any, ops: list[dict]) -> None:
+    """스텁이 만든 연산도 검증한다. 실패하면 쉬운 한국어 422 로 안내한다(500 이 아니다)."""
+    try:
+        patch_file(path, ops, dry_run=True)
+    except PatchError:
+        raise WebError(
+            "요청하신 변경을 적용하면 설계서에 문제가 생겨 보류했습니다. "
+            "다른 표현으로 다시 요청해 주세요.",
+            status=422,
+        ) from None
+
+
 def stub_change_request(text: str, data: dict, path: Any) -> tuple[list[dict], list[str]]:
     """"수정 요청" 문장을 검증된 JSON Patch 와 쉬운 한국어 변경 요약으로 바꾼다.
 
     알아듣지 못한 문장은 None 이 아니라 WebError(400) 로 안내한다.
+    삭제·추가 연산에도 대상 id 를 확인하는 test 를 함께 둔다.
     """
     match = _CHANGE_TITLE.search(text)
     if match:
@@ -343,10 +354,11 @@ def stub_change_request(text: str, data: dict, path: Any) -> tuple[list[dict], l
         ui, unit = _unit_at(data, week_no)
         old_title = unit.get("title", "")
         ops = [
+            {"op": "test", "path": f"/units/{ui}/id", "value": unit.get("id")},
             {"op": "test", "path": f"/units/{ui}/title", "value": old_title},
             {"op": "replace", "path": f"/units/{ui}/title", "value": new_title},
         ]
-        patch_file(path, ops, dry_run=True)  # 검증(저장은 안 함)
+        _dry_run_checked(path, ops)
         return ops, [f"{week_no}주차 제목을 '{new_title}'(으)로 바꿉니다."]
 
     match = _CHANGE_ADD.search(text)
@@ -354,17 +366,23 @@ def stub_change_request(text: str, data: dict, path: Any) -> tuple[list[dict], l
         week_no, kind, title = int(match.group(1)), match.group(2), match.group(3) or ""
         ui, unit = _unit_at(data, week_no)
         item = _minimal_item(unit, kind, title, 30)
-        ops = [{"op": "add", "path": f"/units/{ui}/items/-", "value": item}]
-        patch_file(path, ops, dry_run=True)
+        ops = [
+            {"op": "test", "path": f"/units/{ui}/id", "value": unit.get("id")},
+            {"op": "add", "path": f"/units/{ui}/items/-", "value": item},
+        ]
+        _dry_run_checked(path, ops)
         return ops, [f"{week_no}주차에 {kind} '{item['title']}'을(를) 추가합니다."]
 
     match = _CHANGE_REMOVE.search(text)
     if match:
         week_no, title = int(match.group(1)), match.group(2).strip()
         ui, unit = _unit_at(data, week_no)
-        ji, _ = _find_item(unit, title)
-        ops = [{"op": "remove", "path": f"/units/{ui}/items/{ji}"}]
-        patch_file(path, ops, dry_run=True)
+        ji, item = _find_item(unit, title)
+        ops = [
+            {"op": "test", "path": f"/units/{ui}/items/{ji}/id", "value": item.get("id")},
+            {"op": "remove", "path": f"/units/{ui}/items/{ji}"},
+        ]
+        _dry_run_checked(path, ops)
         return ops, [f"{week_no}주차의 '{title}' 활동을 뺍니다."]
 
     match = _CHANGE_DUE.search(text)
@@ -373,10 +391,10 @@ def stub_change_request(text: str, data: dict, path: Any) -> tuple[list[dict], l
         ui, unit = _unit_at(data, week_no)
         ji, item = _find_item(unit, title)
         ops = [
-            {"op": "test", "path": f"/units/{ui}/items/{ji}/title", "value": item.get("title")},
+            {"op": "test", "path": f"/units/{ui}/items/{ji}/id", "value": item.get("id")},
             {"op": "replace", "path": f"/units/{ui}/items/{ji}/due_day", "value": due},
         ]
-        patch_file(path, ops, dry_run=True)
+        _dry_run_checked(path, ops)
         return ops, [f"{week_no}주차 '{title}'의 마감을 {due}일차로 바꿉니다."]
 
     match = _CHANGE_MINUTES.search(text)
@@ -385,10 +403,10 @@ def stub_change_request(text: str, data: dict, path: Any) -> tuple[list[dict], l
         ui, unit = _unit_at(data, week_no)
         ji, item = _find_item(unit, title)
         ops = [
-            {"op": "test", "path": f"/units/{ui}/items/{ji}/title", "value": item.get("title")},
+            {"op": "test", "path": f"/units/{ui}/items/{ji}/id", "value": item.get("id")},
             {"op": "replace", "path": f"/units/{ui}/items/{ji}/estimated_minutes", "value": minutes},
         ]
-        patch_file(path, ops, dry_run=True)
+        _dry_run_checked(path, ops)
         return ops, [f"{week_no}주차 '{title}'의 소요 시간을 {minutes}분으로 바꿉니다."]
 
     raise WebError(
@@ -437,6 +455,8 @@ def _call_llm(messages: list[dict], what: str) -> dict:
     url = _read_secret_path(ENV_URL_PATH)
     if not key or not url:
         raise DraftError(MODEL_MISSING_MESSAGE)
+    if not url.lower().startswith("https://"):
+        raise DraftError("모델 주소가 올바르지 않습니다. 주소를 확인하고 다시 시도해 주세요.")
 
     body: dict = {"messages": messages, "temperature": 0.4}
     model = os.environ.get(ENV_MODEL) or None
@@ -482,6 +502,17 @@ def _validate_design_payload(payload: dict) -> dict:
             "만들어진 설계서에 설계 오류가 있어 저장하지 않았습니다. 다시 시도해 주세요."
         )
     return copy.deepcopy(payload)
+
+
+def validate_design_payload(payload: Any) -> dict:
+    """스텁·주입·실모델 결과를 가리지 않고 저장 전 스키마·린트 검증을 한다.
+
+    문제가 있으면 WebError(422) — 설계서 파일은 저장되지 않는다.
+    """
+    try:
+        return _validate_design_payload(payload)
+    except DraftError as exc:
+        raise WebError(exc.message, status=422) from None
 
 
 # --- 진입점 -------------------------------------------------------------------

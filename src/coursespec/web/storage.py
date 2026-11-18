@@ -25,7 +25,9 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_WORKSPACE = _REPO_ROOT / "var" / "workspace"
 EXAMPLE_PATH = _REPO_ROOT / "examples" / "ai-agent-education.coursespec.yaml"
 
-_ID_RE = re.compile(r"[^A-Za-z0-9\-]")
+# id 는 글자·숫자·하이픈만 허용한다. 허용하지 않는 문자(밑줄, 경로 구분자, 점 등)를
+# 지워 버리면 서로 다른 id 가 같은 파일을 가리킬 수 있으므로, **거부**한다.
+_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9\-]*$")
 
 
 def workspace_dir() -> Path:
@@ -36,16 +38,15 @@ def workspace_dir() -> Path:
 
 
 def _safe_id(design_id: str) -> str:
-    safe = _ID_RE.sub("", design_id or "")
-    if not safe:
+    if not design_id or not _ID_RE.match(design_id):
         raise WebError("설계서를 찾지 못했습니다. 다시 열어 주세요.", status=404)
-    return safe
+    return design_id
 
 
 # --- 과정 초안 (M1) -----------------------------------------------------------
 
 def draft_path(draft_id: str) -> Path:
-    return workspace_dir() / f"{draft_id}.yaml"
+    return workspace_dir() / f"{_safe_id(draft_id)}.yaml"
 
 
 def save_draft(draft: dict) -> None:

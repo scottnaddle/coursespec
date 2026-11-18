@@ -41,6 +41,49 @@ LEVEL_LABELS = {
 
 _WEEK_PREFIX = re.compile(r"^\s*\d{1,2}\s*주차\s*[—–:\-]?\s*")
 
+# 린트 코드(E***/W***)별 교수에게 보여 줄 쉬운 한국어 문장.
+# 스펙 키 이름(requires·grading·rights.license 등), 원시 id('w2-quiz' 같은), 영문 단어를
+# 절대 넣지 않는다. 코드가 사전에 없으면 _GENERIC_NOTICE 로 돌린다.
+_FRIENDLY_MESSAGES: dict[str, str] = {
+    "E001": "같은 이름을 쓰는 항목이 여러 개 있습니다. 겹치는 이름을 서로 다르게 바꿔 주세요.",
+    "E002": "연결된 학습목표 중에 목록에 없는 것이 있습니다. 활동에 연결된 목표를 확인해 주세요.",
+    "E003": "앞서 해야 할 활동으로 지목한 활동을 찾지 못했습니다. 앞 주차에 있는 활동인지 확인해 주세요.",
+    "E004": "앞서 해야 할 활동이 서로를 가리켜 순환합니다. 순서를 한쪽 방향으로만 정리해 주세요.",
+    "E005": "평가 활동이 과정에 없는 평가 항목에 연결돼 있습니다. 연결된 평가 항목을 확인해 주세요.",
+    "E006": "배지를 받을 조건으로 걸어둔 활동을 찾지 못했습니다. 조건의 활동 이름을 확인해 주세요.",
+    "E007": "마감일이 공개일보다 앞서 있습니다. 날짜를 다시 확인해 주세요.",
+    "E008": "완료 기준에 필요한 점수 설정이 빠졌거나 잘못됐습니다. 점수 설정을 확인해 주세요.",
+    "E009": "퀴즈 문항에 필요한 보기나 정답이 빠져 있습니다. 문항을 확인해 주세요.",
+    "E010": "평가 기준표의 점수 단계가 겹칩니다. 각 단계의 점수를 서로 다르게 정해 주세요.",
+    "E011": "활동 종류와 맞지 않는 완료 기준이 걸려 있습니다. 완료 기준을 확인해 주세요.",
+    "E012": "활동 이름이 너무 길어 학습 관리 시스템에 넣지 못합니다. 이름을 줄여 주세요.",
+    "E013": "평가 항목에 비중(백분율)이 빠져 있습니다. 비중을 적어 주세요.",
+    "E014": "실시간 수업 활동에 수업 안내 문장이 빠져 있습니다. 안내 문장을 적어 주세요.",
+    "E015": "활동에 연결된 자료가 자료 목록에 없습니다. 자료를 다시 연결해 주세요.",
+    "E016": "자료에 연결된 주차를 찾지 못했습니다. 자료가 속한 주차를 확인해 주세요.",
+    "E017": "학습자에게 공개할 수 없는 자료가 활동에 연결돼 있습니다. 자료의 공개 설정을 확인해 주세요.",
+    "W101": "이 학습목표를 평가하는 활동이 없습니다. 평가 활동을 하나 연결해 주세요.",
+    "W102": "이 학습목표를 다루는 활동이 없습니다. 활동에 이 목표를 연결해 주세요.",
+    "W103": "평가 활동에 학습목표가 연결돼 있지 않습니다. 목표를 연결해 주세요.",
+    "W104": "평가 비중의 합이 100%가 아닙니다. 각 항목의 비중을 확인해 주세요.",
+    "W105": "이 주차의 예상 학습 시간이 미리 정한 한도를 넘습니다. 시간을 조절해 주세요.",
+    "W106": "같은 주차나 뒤 주차의 활동을 앞서 해야 할 활동으로 걸 수 없습니다. 앞 주차 활동으로 바꿔 주세요.",
+    "W107": "문항이 없는 퀴즈입니다. 문항을 넣어 주세요.",
+    "W108": "배지 조건의 활동에 완료 기준이 없어 배지가 주어지지 않습니다. 완료 기준을 정해 주세요.",
+    "W109": "평가 항목이 정해지지 않은 평가 활동이 있습니다. 어느 항목으로 평가할지 정해 주세요.",
+    "W110": "이 종류의 활동에 둔 평가 기준표는 쓰이지 않습니다.",
+    "W111": "수업에서 쓸 자료가 콘텐츠 생성용으로 표시되지 않았습니다. 자료 설정을 확인해 주세요.",
+    "W112": "자료의 이용 권한(라이선스)이 확인되지 않았습니다. 자료의 권한 정보를 확인해 주세요.",
+    "W113": "이 학습목표를 다루는 튜터용 자료가 없습니다.",
+    "W115": "만든 수업의 남은 기록이 없어 버전 관리되지 않습니다.",
+}
+_GENERIC_NOTICE = "설계에서 확인이 필요한 부분이 있습니다."
+
+
+def _friendly_message(finding: Finding) -> str:
+    """린트 원문(코드·스펙 키·원시 id 들어감) 대신 교수에게 보여 줄 쉬운 문장."""
+    return _FRIENDLY_MESSAGES.get(finding.code, _GENERIC_NOTICE)
+
 
 def load_checked(data: Any, path: Any = None):
     """스키마 검증을 통과한 Spec 을 돌려준다. 실패하면 쉬운 한국어 WebError."""
@@ -55,8 +98,8 @@ def _strip_week_prefix(title: str) -> str:
 
 
 def _where_label(finding: Finding, spec) -> str:
-    """린트 위치(id)를 교수가 읽는 라벨(“2주차 · 확인 퀴즈”)로 바꾼다."""
-    where = finding.where
+    """린트 위치(id)를 교수가 읽는 라벨(“2주차 · 확인 퀴즈”)로 바꾼다. 원시 id 는 노출하지 않는다."""
+    where = finding.where.split("#", 1)[0]  # 문항 위치는 활동 기준으로 돌린다
     if where in spec.unit_index:
         return f"{spec.unit_index[where] + 1}주차"
     if where in spec.unit_of:
@@ -67,7 +110,9 @@ def _where_label(finding: Finding, spec) -> str:
             return f"학습목표 {i}"
     for badge in spec.badges:
         if badge.get("id") == where:
-            return f"배지 · {badge.get('name') or where}"
+            return f"배지 · {badge.get('name') or '배지'}"
+    if where in spec.materials:
+        return f"자료 · {(spec.materials[where].get('title') or '자료')}"
     if where == "grading":
         return "평가 비중"
     return "과정 전체"
@@ -94,7 +139,7 @@ def build_map(design_id: str, data: dict, path: Any = None, confirmed: bool = Fa
     notices = [
         {
             "severity": "error" if f.is_error else "warning",
-            "message": f.message,
+            "message": _friendly_message(f),
             "where": _where_label(f, spec),
         }
         for f in findings

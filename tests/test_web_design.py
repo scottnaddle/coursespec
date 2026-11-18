@@ -76,6 +76,22 @@ def test_generate_design_without_config_gives_friendly_korean(monkeypatch):
     assert "모델 연결 정보가 없습니다" in excinfo.value.message
 
 
+def test_llm_url_must_be_https(tmp_path, monkeypatch):
+    """실모델 주소는 https 만 허용한다. 값(주소·키)은 메시지에 남기지 않는다."""
+    key_file = tmp_path / "key.txt"
+    key_file.write_text("test-key", encoding="utf-8")
+    url_file = tmp_path / "url.txt"
+    url_file.write_text("http://example.invalid/v1", encoding="utf-8")
+    monkeypatch.delenv("COURSESPEC_LLM_STUB", raising=False)
+    monkeypatch.setenv("COURSESPEC_LLM_KEY_PATH", str(key_file))
+    monkeypatch.setenv("COURSESPEC_LLM_URL_PATH", str(url_file))
+    draft = stub_payload("보안 연결", "", [])
+    with pytest.raises(DraftError) as excinfo:
+        generate_design(draft)
+    assert "주소가 올바르지 않습니다" in excinfo.value.message
+    assert "http" not in excinfo.value.message
+
+
 def test_design_endpoint_503_korean_when_model_missing(tmp_path, monkeypatch):
     """모델 연결 정보가 없으면 설계서 생성은 저장 없이 쉬운 한국어 503 안내를 돌려준다."""
     monkeypatch.setenv("COURSESPEC_WEB_WORKSPACE", str(tmp_path / "workspace"))

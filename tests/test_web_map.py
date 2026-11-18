@@ -86,7 +86,7 @@ def test_warning_notice_is_easy_korean_without_code(client, example_id):
     body = client.get(f"/api/designs/{example_id}").json()
     warnings = [n for n in body["notices"] if n["severity"] == "warning"]
     assert warnings, body["notices"]
-    assert any("가중치" in w["message"] for w in warnings)
+    assert any("평가 비중" in w["message"] for w in warnings)
     assert all("W1" not in w["message"] and "W1" not in w["where"] for w in warnings)
     assert warnings[0]["where"] == "평가 비중"
 
