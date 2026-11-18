@@ -1,12 +1,15 @@
 """CourseSpec 교수용 웹 UI 백엔드 (FastAPI).
 
-범위: 실라버스 초안 생성·검토·인계 (M1). LMS 실행·설계서 확정·배포는 하지 않는다.
+범위: 실라버스 초안 생성·검토·인계 (M1), 과정 지도 확인·편집·수정 요청·확정 (M2).
+설계서 수정은 검증된 JSON Patch 로만 하고, 확정은 상태 저장만 하며
+plan/export/LMS 호출은 하지 않는다.
 기본 화면에 YAML·JSON Patch·도구 이름을 보여 주지 않고, 교수가 보는 오류는 모두
 한국어로 원인과 다음 행동을 담는다.
 """
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,13 +20,29 @@ from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from ..lint import lint
+from ..patch import PatchError, patch_file
+from .course_map import build_map, load_checked
+from .design import generate_design, interpret_change_request, validate_design_payload
 from .drafting import generate_draft
+from .editing import apply_edits
 from .errors import DraftError, WebError
 from .extract import extract_sources
 from .handoff import draft_to_syllabus
-from .models import DraftUpdate
+from .models import ChangeRequestBody, DraftUpdate, EditRequest
 from .redact import redact
-from .storage import load_draft, save_draft, workspace_dir
+from .storage import (
+    copy_example_design,
+    load_design,
+    load_draft,
+    load_meta,
+    load_requests,
+    save_design,
+    save_draft,
+    save_meta,
+    save_requests,
+    workspace_dir,
+)
 
 logger = logging.getLogger("coursespec.web")
 
@@ -49,6 +68,11 @@ def _clean_filename(filename: str | None) -> str:
     if not filename:
         return "자료"
     return Path(filename).name or "자료"
+
+
+def _file_hash(path: Path) -> str:
+    """설계서 파일 내용의 지문. 수정 요청을 만든 뒤 파일이 바뀌었는지 확인하는 데 쓴다."""
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _normalize_suggestions(raw: list[dict]) -> list[dict]:
@@ -96,7 +120,10 @@ def _apply_suggestion(draft: dict, suggestion: dict) -> None:
         pass
 
 
-def create_app(generate: Callable[[str, str, list[tuple[str, str]]], dict] | None = None) -> FastAPI:
+def create_app(
+    generate: Callable[[str, str, list[tuple[str, str]]], dict] | None = None,
+    design_generate: Callable[[dict], dict] | None = None,
+) -> FastAPI:
     app = FastAPI(title="CourseSpec 교수용 UI", docs_url=None, redoc_url=None, openapi_url=None)
 
     logging.getLogger().addFilter(_RedactingFilter())
@@ -143,14 +170,11 @@ def create_app(generate: Callable[[str, str, list[tuple[str, str]]], dict] | Non
 
         sources, warnings = extract_sources(uploads)
 
-        try:
-            payload = (
-                generate(title, goals, sources)
-                if generate is not None
-                else generate_draft(title, goals, sources)
-            )
-        except DraftError:
-            raise
+        payload = (
+            generate(title, goals, sources)
+            if generate is not None
+            else generate_draft(title, goals, sources)
+        )
 
         draft = {
             "id": uuid4().hex,
@@ -198,14 +222,11 @@ def create_app(generate: Callable[[str, str, list[tuple[str, str]]], dict] | Non
         original_title = draft.get("_input", {}).get("title", draft["title"])
         original_goals = draft.get("_input", {}).get("goals", draft.get("goals", ""))
         sources = [(s["filename"], s["text"]) for s in draft.get("_sources", [])]
-        try:
-            payload = (
-                generate(original_title, original_goals, sources)
-                if generate is not None
-                else generate_draft(original_title, original_goals, sources)
-            )
-        except DraftError:
-            raise
+        payload = (
+            generate(original_title, original_goals, sources)
+            if generate is not None
+            else generate_draft(original_title, original_goals, sources)
+        )
         draft["title"] = (payload.get("title") or original_title).strip() or original_title
         draft["intro"] = str(payload.get("intro") or "")
         draft["outcomes"] = [str(o) for o in (payload.get("outcomes") or [])]
@@ -253,6 +274,124 @@ def create_app(generate: Callable[[str, str, list[tuple[str, str]]], dict] | Non
         # 인계 텍스트를 작업 공간에 저장해 두고, 설계서 생성·LMS 호출은 하지 않는다.
         (workspace_dir() / f"{draft_id}.handoff.md").write_text(text, encoding="utf-8")
         return {"text": text}
+
+    # --- M2: 과정 지도(설계서) -------------------------------------------------
+
+    def _design_map(design_id: str) -> dict:
+        path, data = load_design(design_id)
+        confirmed = bool(load_meta(design_id).get("confirmed"))
+        return build_map(design_id, data, path, confirmed=confirmed)
+
+    def _unconfirm(design_id: str) -> None:
+        """편집이나 수정 요청 적용에 성공하면 확정을 푼다(교수가 다시 검토·확정할 수 있게)."""
+        meta = load_meta(design_id)
+        if meta.get("confirmed"):
+            meta["confirmed"] = False
+            save_meta(design_id, meta)
+
+    @app.post("/api/drafts/{draft_id}/design")
+    def create_design(draft_id: str):
+        draft = load_draft(draft_id)
+        payload = (
+            design_generate(draft)
+            if design_generate is not None
+            else generate_design(draft)
+        )
+        if not isinstance(payload, dict):
+            raise WebError("만들어진 설계서를 읽지 못했습니다. 다시 시도해 주세요.", status=422)
+        design_id = uuid4().hex
+        payload["id"] = design_id
+        # 스텁·주입·실모델 결과를 가리지 않고 저장 전 검증한다. 실패하면 파일은 남기지 않는다.
+        validate_design_payload(payload)
+        save_design(design_id, payload)
+        return {"design_id": design_id, "map": _design_map(design_id)}
+
+    @app.post("/api/designs/example")
+    def open_example():
+        design_id = f"example-{uuid4().hex[:8]}"
+        copy_example_design(design_id)
+        return {"design_id": design_id, "map": _design_map(design_id)}
+
+    @app.get("/api/designs/{design_id}")
+    def get_design(design_id: str):
+        return _design_map(design_id)
+
+    @app.post("/api/designs/{design_id}/edits")
+    def edit_design(design_id: str, body: EditRequest):
+        path, data = load_design(design_id)
+        actions = [action.model_dump(exclude_unset=True) for action in body.actions]
+        apply_edits(path, data, actions)
+        _unconfirm(design_id)
+        return _design_map(design_id)
+
+    @app.post("/api/designs/{design_id}/change-requests")
+    def create_change_request(design_id: str, body: ChangeRequestBody):
+        path, data = load_design(design_id)
+        ops, summary = interpret_change_request(body.text, data, path)
+        request_id = uuid4().hex[:12]
+        requests = load_requests(design_id)
+        requests.append(
+            {
+                "request_id": request_id,
+                "ops": ops,
+                "summary": summary,
+                "created_at": _now(),
+                # 요청을 만든 시점의 설계서 내용 지문. 그 사이 바뀌면 적용을 막는다.
+                "design_hash": _file_hash(path),
+            }
+        )
+        save_requests(design_id, requests)
+        return {"request_id": request_id, "summary": summary}
+
+    def _pop_request(design_id: str, request_id: str) -> dict:
+        requests = load_requests(design_id)
+        for i, request in enumerate(requests):
+            if request.get("request_id") == request_id:
+                del requests[i]
+                save_requests(design_id, requests)
+                return request
+        raise WebError("그 수정 요청을 찾지 못했습니다. 처음부터 다시 요청해 주세요.", status=404)
+
+    @app.post("/api/designs/{design_id}/change-requests/{request_id}/apply")
+    def apply_change_request(design_id: str, request_id: str):
+        request = _pop_request(design_id, request_id)
+        path, _ = load_design(design_id)
+        # 요청을 만든 뒤 설계서가 바뀌었으면(삭제·추가가 엉뚱한 활동을 건드리는 것을 막기 위해) 적용하지 않는다.
+        if request.get("design_hash") and request["design_hash"] != _file_hash(path):
+            raise WebError(
+                "설계서가 그 사이 바뀌어 이 변경을 적용하지 못했습니다. 수정 요청을 다시 본문에 적어 주세요.",
+                status=409,
+            )
+        try:
+            patch_file(path, request.get("ops") or [])
+        except PatchError:
+            raise WebError(
+                "변경 내용을 적용하면 설계서에 문제가 생겨 적용하지 못했습니다. 수정 요청을 다시 본문에 적어 주세요.",
+                status=409,
+            ) from None
+        _unconfirm(design_id)
+        return _design_map(design_id)
+
+    @app.post("/api/designs/{design_id}/change-requests/{request_id}/discard")
+    def discard_change_request(design_id: str, request_id: str):
+        _pop_request(design_id, request_id)
+        return {"discarded": True}
+
+    @app.post("/api/designs/{design_id}/confirm")
+    def confirm_design(design_id: str):
+        path, data = load_design(design_id)
+        spec = load_checked(data, path)
+        errors = [f for f in lint(spec) if f.is_error]
+        if errors:
+            raise WebError(
+                "설계에 오류가 있어 아직 확정할 수 없습니다. 빨간 안내가 사라진 뒤 다시 눌러 주세요.",
+                status=409,
+            )
+        meta = load_meta(design_id)
+        meta["confirmed"] = True
+        meta["confirmed_at"] = _now()
+        save_meta(design_id, meta)
+        return {"confirmed": True, "message": "설계가 확정되었습니다."}
 
     # 정적 프론트 빌드가 있으면 함께 서빙한다 (개발 시 Vite 프록시).
     dist = Path(__file__).resolve().parents[3] / "web" / "dist"

@@ -53,3 +53,27 @@ class Draft(BaseModel):
     warnings: list[str] = Field(default_factory=list)
     created_at: str = ""
     updated_at: str = ""
+
+
+# --- M2: 과정 지도 ------------------------------------------------------------
+
+class EditAction(BaseModel):
+    """화면 편집 동작 하나. 서버가 검증된 패치로 바꿔 적용한다."""
+
+    action: Literal["update_unit", "update_item", "add_item", "remove_item", "move_item"]
+    unit_id: str | None = None
+    item_id: str | None = None
+    to_unit_id: str | None = None
+    kind: str | None = None  # 활동 추가용 한국어 유형 (읽기·퀴즈·과제…)
+    title: str | None = None
+    summary: str | None = None
+    minutes: int | None = None
+    due_day: int | None = None  # 명시하면 변경, None 이면 마감일 삭제
+
+
+class EditRequest(BaseModel):
+    actions: list[EditAction]
+
+
+class ChangeRequestBody(BaseModel):
+    text: str = Field(min_length=1)
