@@ -126,9 +126,35 @@ units:
 - 튜터 팩: 제품 중립 JSON + SKILL.md. DeepTutor 연결은 학습자 권한 체계 이후입니다.
 - 재배포 diff와 드리프트 감지: 실행기가 넘긴 LMS 스냅샷·배포 기록을 쓰는 네트워크 없는 `coursespec diff`로 제공합니다. 실제 apply 실행기는 [로드맵](docs/roadmap.md)에 있습니다. 변경 내역은 [CHANGELOG.md](CHANGELOG.md).
 
+## 교수용 웹 UI (M1: 실라버스 초안)
+
+개발 지식이 없는 교수가 브라우저에서 과목 이름(＋선택 목표·자료)으로 실라버스 초안을 받아
+고친 뒤 설계 에이전트 입력으로 넘길 수 있는 웹 UI 입니다. 백엔드는 `src/coursespec/web/`,
+프론트는 `web/`(Vite + React + TypeScript)입니다.
+
+```bash
+# 백엔드 (FastAPI) — 스텁 모드로 띄우면 네트워크 LLM 호출 없이 초안을 만든다
+pip install -e ".[web]"
+COURSESPEC_LLM_STUB=1 python -m coursespec.web.main          # 기본 http://127.0.0.1:18080
+
+# 프론트 (개발) — /api 를 백엔드로 프록시 (시스템 기본 Node(v10)는 쓰지 말 것)
+cd web && npm install && npm run dev                          # 기본 http://127.0.0.1:15180
+
+# 프론트 검사·빌드 (빌드하면 백엔드가 web/dist 를 함께 서빙)
+cd web && npm test && npm run lint && npm run typecheck && npm run build
+```
+
+키·주소는 환경변수 **경로**로만 다룹니다(`COURSESPEC_LLM_KEY_PATH`, `COURSESPEC_LLM_URL_PATH`,
+`COURSESPEC_LLM_MODEL`). 값을 코드·로그·응답에 넣지 않습니다. 스텁 모드가 아니고 키 경로가
+없으면 쉬운 한국어 안내를 돌려줍니다. 자세한 실행·테스트 방법은 [web/README.md](web/README.md).
+
 ## 관련 저장소
 
 - [moodle-agent-mcp](https://github.com/scottnaddle/moodle-agent-mcp) — Moodle MCP 서버 (Moodle 퍼블리셔의 실행 대상)
 - [moodle-local_ubionai](https://github.com/scottnaddle/moodle-local_ubionai) — MCP가 의존하는 Moodle 로컬 플러그인
 - [THU-MAIC/OpenMAIC](https://github.com/THU-MAIC/OpenMAIC) — 멀티에이전트 인터랙티브 수업 생성 (수업 생성 대상)
 - [HKUDS/DeepTutor](https://github.com/HKUDS/DeepTutor) — 학습자 튜터 (튜터 팩의 대상)
+
+## 라이선스
+
+이 프로젝트는 MIT 라이선스로 배포됩니다. 자세한 내용은 [LICENSE](LICENSE)를 보세요.

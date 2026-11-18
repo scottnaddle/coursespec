@@ -15,3 +15,10 @@ htmlcov/
 output/
 outputs/
 plans/
+
+# 웹 UI 백엔드 작업 공간 (초안 YAML 저장소)
+var/
+
+# 프론트엔드
+web/node_modules/
+web/dist/
